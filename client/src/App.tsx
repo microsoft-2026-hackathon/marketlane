@@ -7,7 +7,7 @@ import { addCartLine, itemCount, quoteDraftKey, removeCartLine, sameCartLines, s
 import { formatMoney } from "./lib/money.js";
 import { BrandMark, Icon, type IconName } from "./components/icon.js";
 import { OverviewStrip } from "./components/overview.js";
-import { ErrorState, Notice } from "./components/ui.js";
+import { ErrorState, Notice, statusLabels } from "./components/ui.js";
 import { Shop } from "./features/shop.js";
 import { Cart, type CheckoutProblem } from "./features/cart.js";
 import { OrderDetails, Orders } from "./features/orders.js";
@@ -22,15 +22,15 @@ interface DraftMetadata { couponCode: string; note: string }
 
 const emptyMetadata: DraftMetadata = { couponCode: "", note: "" };
 const navigation: { view: View; label: string; icon: IconName }[] = [
-  { view: "shop", label: "Shop", icon: "shop" },
-  { view: "cart", label: "Your cart", icon: "cart" },
-  { view: "orders", label: "Orders", icon: "orders" },
-  { view: "inventory", label: "Inventory", icon: "inventory" },
+  { view: "shop", label: "상품", icon: "shop" },
+  { view: "cart", label: "장바구니", icon: "cart" },
+  { view: "orders", label: "주문", icon: "orders" },
+  { view: "inventory", label: "재고", icon: "inventory" },
 ];
 
 export function App() {
   const [view, setView] = useState<View>("shop");
-  const [locale, setLocale] = useState<Locale>("en");
+  const [locale, setLocale] = useState<Locale>("ko");
   const [customerId, setCustomerId] = useState("");
   const [revision, setRevision] = useState(0);
   const [dialog, setDialog] = useState<Dialog | null>(null);
@@ -62,7 +62,7 @@ export function App() {
   }, [customerResource.data, customerId]);
 
   useEffect(() => {
-    document.title = `${navigation.find((entry) => entry.view === view)?.label ?? "Shop"} - Marketlane`;
+    document.title = `${navigation.find((entry) => entry.view === view)?.label ?? "상품"} - Marketlane`;
   }, [view]);
 
   const quoteRequest: QuoteRequest = {
@@ -85,7 +85,7 @@ export function App() {
   function selectCustomer(id: string) {
     if (mutationOwner.current) return;
     if (!customers.some((entry) => entry.id === id)) {
-      setFlash({ tone: "error", message: "That customer is no longer available. Reload the customer list.", cartLink: false });
+      setFlash({ tone: "error", message: "선택한 고객을 찾을 수 없습니다. 고객 목록을 다시 불러오세요.", cartLink: false });
       return;
     }
     setCustomerId(id);
@@ -102,7 +102,7 @@ export function App() {
   }
 
   function changeDraft(change: () => void): string | null {
-    if (mutationOwner.current) return "Please wait for the current operation to finish before changing the cart.";
+    if (mutationOwner.current) return "진행 중인 작업이 끝난 뒤 장바구니를 변경해 주세요.";
     try {
       change();
       clearDefiniteProblem(customerId);
@@ -117,11 +117,11 @@ export function App() {
 
   function add(product: Product, quantity = 1): string | null {
     const failure = changeDraft(() => {
-      if (!customer || !draft.ready) throw new Error("Select a customer and resolve any saved-cart notice before adding items.");
+      if (!customer || !draft.ready) throw new Error("고객을 선택하고 저장된 장바구니의 알림을 확인한 뒤 상품을 담아 주세요.");
       draft.replace(customerId, addCartLine(draft.items, product.id, quantity));
     });
     if (!failure) {
-      setFlash({ tone: "success", message: `${quantity === 1 ? product.name : `${quantity} x ${product.name}`} added to ${customer?.name}'s draft.`, cartLink: true });
+      setFlash({ tone: "success", message: `${customer?.name}의 장바구니에 ${product.name} ${quantity}개를 담았습니다.`, cartLink: true });
       setDialog(null);
     }
     return failure;
@@ -134,7 +134,7 @@ export function App() {
   }
 
   async function performMutation<T>(kind: Exclude<Mutation, "checkout">, action: () => Promise<T>): Promise<T> {
-    if (mutationOwner.current) throw new Error("Another operation is still running. Please wait for it to finish.");
+    if (mutationOwner.current) throw new Error("다른 작업이 진행 중입니다. 완료될 때까지 기다려 주세요.");
     mutationOwner.current = kind;
     setMutation(kind);
     try {
@@ -150,25 +150,25 @@ export function App() {
   async function saveProduct(id: string, update: ProductUpdate) {
     const result = await performMutation("product", () => api.updateProduct(id, update));
     setDialog(null);
-    setFlash({ tone: "success", message: `${result.product.sku} updated. New quotes and orders will use these details.`, cartLink: false });
+    setFlash({ tone: "success", message: `${result.product.sku} 수정 완료. 이후 견적과 주문에 반영됩니다.`, cartLink: false });
   }
 
   async function adjustInventory(adjustment: InventoryAdjustment) {
     const result = await performMutation("inventory", () => api.adjustInventory(adjustment));
     setDialog(null);
-    setFlash({ tone: "success", message: `${result.product.sku}: ${result.movement.delta > 0 ? "+" : ""}${result.movement.delta} units recorded in the movement ledger.`, cartLink: false });
+    setFlash({ tone: "success", message: `${result.product.sku}: 재고 변동 ${result.movement.delta > 0 ? "+" : ""}${result.movement.delta}개를 이력에 기록했습니다.`, cartLink: false });
   }
 
   async function advanceOrder(id: string, status: "packing" | "shipped") {
     const result = await performMutation("status", () => api.updateOrderStatus(id, status));
-    setFlash({ tone: "success", message: `${result.order.number} is now ${result.order.status}.`, cartLink: false });
+    setFlash({ tone: "success", message: `${result.order.number}: ${statusLabels[result.order.status]} 상태로 변경했습니다.`, cartLink: false });
   }
 
   async function checkout() {
     if (mutationOwner.current) return;
     if (!customer || !draft.ready || !quote.data || quote.loading || quoteKey === null || checkoutProblems[customerId]?.uncertain
       || quote.data.locale !== locale || !sameCartLines(quote.data.items, draft.items)) {
-      setFlash({ tone: "error", message: "A valid quote for this customer's current draft is required. Resolve the cart notices before placing an order.", cartLink: true });
+      setFlash({ tone: "error", message: "현재 고객의 장바구니에 유효한 견적이 필요합니다. 장바구니 알림을 확인한 뒤 주문해 주세요.", cartLink: true });
       return;
     }
     const ownerId = customer.id;
@@ -193,7 +193,7 @@ export function App() {
       if (!order || !order.id || !order.number || order.customer?.id !== ownerId || order.locale !== submittedLocale || order.currency !== "USD"
         || !Array.isArray(order.items) || order.items.length !== submitted.items.length
         || !sameCartLines(order.items, submitted.items)) {
-        throw new Error("The order acknowledgement did not match the submitted draft.");
+        throw new Error("서버의 주문 확인 내용이 전송한 장바구니와 일치하지 않습니다.");
       }
       draft.replace(ownerId, []);
       setMetadata((current) => ({ ...current, [ownerId]: { couponCode: "", note: "" } }));
@@ -207,8 +207,8 @@ export function App() {
         [ownerId]: {
           uncertain: !rejected,
           message: rejected
-            ? `${errorMessage(error)} Your draft has been preserved.`
-            : `The server may already have accepted this order. Your draft has been preserved, and no retry was sent. Check this customer's Orders before submitting again. ${errorMessage(error)}`,
+            ? `${errorMessage(error)} 장바구니는 그대로 보관했습니다.`
+            : `서버에서 이미 주문을 접수했을 수 있습니다. 장바구니는 보관했으며 자동 재시도하지 않았습니다. 다시 주문하기 전에 이 고객의 주문 목록을 확인해 주세요. ${errorMessage(error)}`,
         },
       }));
     } finally {
@@ -231,7 +231,7 @@ export function App() {
       return next;
     });
     quote.reload();
-    setFlash({ tone: "info", message: "A new submission is now allowed after the quote refreshes. Only place another order if the earlier submission was not accepted; each successful request creates a separate order.", cartLink: false });
+    setFlash({ tone: "info", message: "견적 갱신 후 다시 주문할 수 있습니다. 이전 주문이 접수되지 않았을 때만 제출해 주세요. 성공한 요청마다 별도 주문이 생성됩니다.", cartLink: false });
   }
 
   function openOrder(id: string) {
@@ -245,12 +245,12 @@ export function App() {
   const customerInitials = customer?.name.split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase() ?? "?";
 
   return <div className="app-shell">
-    <a className="skip-link" href="#main-content">Skip to content</a>
+    <a className="skip-link" href="#main-content">본문으로 이동</a>
     <aside className="sidebar">
-      <button className="brand" onClick={() => navigate("shop")} disabled={busy} aria-label="Marketlane home"><BrandMark /><span>Marketlane<small>WORKSPACE GOODS</small></span></button>
+      <button className="brand" onClick={() => navigate("shop")} disabled={busy} aria-label="Marketlane 홈"><BrandMark /><span>Marketlane<small>WORKSPACE GOODS</small></span></button>
       <div className="sidebar-navigation">
-        <p className="nav-section-label">YOUR WORKING DAY</p>
-        <nav aria-label="Main navigation">
+        <p className="nav-section-label">일하는 공간</p>
+        <nav aria-label="주 메뉴">
           {navigation.map((entry) => <button key={entry.view} className={`nav-item ${view === entry.view ? "active" : ""}`}
             aria-current={view === entry.view ? "page" : undefined} disabled={busy} onClick={() => navigate(entry.view)}>
             <Icon name={entry.icon} /><span>{entry.label}</span>
@@ -260,8 +260,8 @@ export function App() {
         </nav>
       </div>
       <div className="sidebar-bottom">
-        <div className="sidebar-message"><span className="sidebar-leaf"><Icon name="leaf" size={25} /></span><p>Less clutter.<br /><strong>More possibility.</strong></p><span>Thoughtful goods for<br />the working day.</span></div>
-        <div className="workspace-identity"><span className="workspace-dot" /><div><strong>Local workspace</strong><span>Shop &amp; operations</span></div></div>
+        <div className="sidebar-message"><span className="sidebar-leaf"><Icon name="leaf" size={25} /></span><p>가볍게 정리하고<br /><strong>새롭게 시작하세요.</strong></p><span>일하는 하루를 위한<br />세심한 선택.</span></div>
+        <div className="workspace-identity"><span className="workspace-dot" /><div><strong>로컬 workspace</strong><span>상품과 운영 관리</span></div></div>
       </div>
     </aside>
 
@@ -269,48 +269,48 @@ export function App() {
       <header className="topbar">
         <div className="topbar-breadcrumb"><span>Workspace</span><Icon name="chevron" size={13} /><strong>{navigation.find((entry) => entry.view === view)?.label}</strong></div>
         <div className="topbar-controls">
-          <label className="header-select"><Icon name="globe" size={17} /><span className="sr-only">Catalog language</span>
-            <select value={locale} disabled={busy} aria-label="Catalog language" title="Changes catalog content only. Prices remain USD."
+          <label className="header-select"><Icon name="globe" size={17} /><span className="sr-only">상품 정보 언어</span>
+            <select value={locale} disabled={busy} aria-label="상품 정보 언어" title="상품 정보의 언어만 바뀝니다. 가격은 USD 기준입니다."
               onChange={(event) => { if (!mutationOwner.current) setLocale(event.target.value as Locale); }}>
-              <option value="en">English</option><option value="ko">Korean</option>
+              <option value="en">English</option><option value="ko">한국어</option>
             </select>
           </label>
           <div className="customer-control"><span className="customer-avatar" aria-hidden="true">{customerInitials}</span>
-            <label className="header-customer-select"><span>Shopping for</span>
-              <select value={customer?.id ?? ""} disabled={busy || customers.length === 0} onChange={(event) => selectCustomer(event.target.value)} aria-label="Shopping customer">
-                {!customer && <option value="">{customerResource.loading ? "Loading customers..." : "Select a customer"}</option>}
+            <label className="header-customer-select"><span>주문 고객</span>
+              <select value={customer?.id ?? ""} disabled={busy || customers.length === 0} onChange={(event) => selectCustomer(event.target.value)} aria-label="주문 고객">
+                {!customer && <option value="">{customerResource.loading ? "고객 불러오는 중..." : "고객 선택"}</option>}
                 {customers.map((entry) => <option value={entry.id} key={entry.id}>{entry.name}</option>)}
               </select>
             </label>
           </div>
-          <button className="header-cart" onClick={() => navigate("cart")} disabled={busy} aria-label={`Open cart, ${count} items`}>
+          <button className="header-cart" onClick={() => navigate("cart")} disabled={busy} aria-label={`장바구니 열기, ${count}개`}>
             <Icon name="cart" size={20} /><span className="header-cart-count">{count}</span>
-            {count > 0 && <span className="header-cart-total">{quote.data ? formatMoney(quote.data.totals.totalCents) : quote.loading ? "Quoting..." : "Needs quote"}</span>}
+            {count > 0 && <span className="header-cart-total">{quote.data ? formatMoney(quote.data.totals.totalCents) : quote.loading ? "계산 중..." : "견적 필요"}</span>}
           </button>
         </div>
       </header>
 
       <main className="main-content" id="main-content" ref={pageHeading} tabIndex={-1}>
-        {config.error !== null && <ErrorState title="Store settings could not be loaded" error={config.error} onRetry={config.reload} />}
-        {customerResource.error !== null && <ErrorState title="Customers could not be loaded" error={customerResource.error} onRetry={customerResource.reload} />}
-        {customerResource.data?.items.length === 0 && <Notice tone="warning" title="No customers are available">Browsing is available, but a customer is required to prepare a cart or place an order.</Notice>}
+        {config.error !== null && <ErrorState title="스토어 설정을 불러오지 못했습니다" error={config.error} onRetry={config.reload} />}
+        {customerResource.error !== null && <ErrorState title="고객 목록을 불러오지 못했습니다" error={customerResource.error} onRetry={customerResource.reload} />}
+        {customerResource.data?.items.length === 0 && <Notice tone="warning" title="등록된 고객이 없습니다">상품은 볼 수 있지만, 장바구니에 담거나 주문하려면 고객이 필요합니다.</Notice>}
         {draft.notice && <Notice tone={draft.notice.kind === "temporary" ? "info" : "warning"}
-          title={draft.notice.kind === "corrupt" ? "Saved cart needs recovery" : draft.notice.kind === "temporary" ? "Temporary cart" : "Browser storage needs attention"}
+          title={draft.notice.kind === "corrupt" ? "저장된 장바구니 복구 필요" : draft.notice.kind === "temporary" ? "임시 장바구니" : "브라우저 저장소 확인 필요"}
           actions={<>
-            {draft.notice.kind === "corrupt" && <button className="button button-small button-secondary" disabled={busy} onClick={draft.reset}>Reset this customer's saved cart</button>}
+            {draft.notice.kind === "corrupt" && <button className="button button-small button-secondary" disabled={busy} onClick={draft.reset}>이 고객의 장바구니 초기화</button>}
             {draft.notice.kind !== "temporary" && <button className="button button-small button-secondary" disabled={busy} onClick={draft.retryStorage}>
-              {draft.notice.kind === "unsaved" ? "Retry saving" : "Try loading again"}
+              {draft.notice.kind === "unsaved" ? "다시 저장" : "다시 불러오기"}
             </button>}
-            {draft.notice.kind === "unavailable" && <button className="text-button" disabled={busy} onClick={draft.useTemporary}>Use a temporary cart</button>}
+            {draft.notice.kind === "unavailable" && <button className="text-button" disabled={busy} onClick={draft.useTemporary}>임시 장바구니 사용</button>}
           </>}>{draft.notice.message}</Notice>}
         {flash && <div className="flash-container"><Notice tone={flash.tone} actions={flash.cartLink && view !== "cart"
-          ? <button className="text-button" disabled={busy} onClick={() => navigate("cart")}>View cart <Icon name="arrow" size={15} /></button>
+          ? <button className="text-button" disabled={busy} onClick={() => navigate("cart")}>장바구니 보기 <Icon name="arrow" size={15} /></button>
           : undefined}>{flash.message}</Notice>
-          <button className="icon-button flash-dismiss" onClick={() => setFlash(null)} aria-label="Dismiss notification"><Icon name="close" size={17} /></button>
+          <button className="icon-button flash-dismiss" onClick={() => setFlash(null)} aria-label="알림 닫기"><Icon name="close" size={17} /></button>
         </div>}
-        {view !== "cart" && quote.error !== null && draft.items.length > 0 && <Notice tone="warning" title="Your cart needs attention"
-          actions={<button className="text-button" disabled={busy} onClick={() => navigate("cart")}>Open cart to make changes <Icon name="arrow" size={15} /></button>}>
-          {errorMessage(quote.error)} Your draft has been kept.
+        {view !== "cart" && quote.error !== null && draft.items.length > 0 && <Notice tone="warning" title="장바구니를 확인해 주세요"
+          actions={<button className="text-button" disabled={busy} onClick={() => navigate("cart")}>장바구니 수정 <Icon name="arrow" size={15} /></button>}>
+          {errorMessage(quote.error)} 장바구니는 그대로 보관했습니다.
         </Notice>}
 
         <OverviewStrip resource={overview} />
@@ -331,7 +331,7 @@ export function App() {
         {view === "inventory" && <Inventory resource={inventory} busy={busy} onAdjust={(id) => setDialog({ kind: "adjust", id })}
           onEdit={(id) => setDialog({ kind: "edit", id })} />}
 
-        <footer className="page-footer"><span><strong>Marketlane</strong> / Thoughtful goods for the working day.</span><span>Local workspace &middot; Prices in USD</span></footer>
+        <footer className="page-footer"><span><strong>Marketlane</strong> / 일하는 하루를 위한 세심한 선택.</span><span>로컬 workspace &middot; USD 기준</span></footer>
       </main>
     </div>
 

@@ -21,11 +21,13 @@ export interface AppOptions {
   logger?: boolean;
   serveClient?: boolean;
   port?: number;
+  dropOrderResponseOnce?: boolean;
 }
 
 export async function createApp(options: AppOptions): Promise<FastifyInstance> {
   const database = options.database;
   const clock = options.clock ?? systemClock;
+  let dropOrderResponse = options.dropOrderResponseOnce ?? false;
   const app = Fastify({ logger: options.logger ?? false, bodyLimit: 64 * 1024 });
   const origins = new Set([
     "http://127.0.0.1:5178", "http://localhost:5178",
@@ -37,7 +39,7 @@ export async function createApp(options: AppOptions): Promise<FastifyInstance> {
       const origin = request.headers.origin;
       if ((origin !== undefined && !origins.has(origin)) ||
           request.headers["sec-fetch-site"] === "cross-site") {
-        throw new AppError(403, "ORIGIN_NOT_ALLOWED", "This request did not originate from the local application.");
+        throw new AppError(403, "ORIGIN_NOT_ALLOWED", "로컬 애플리케이션에서 시작한 요청이 아닙니다.");
       }
     }
   });
@@ -47,6 +49,13 @@ export async function createApp(options: AppOptions): Promise<FastifyInstance> {
     if (options.serveClient) {
       reply.header("Content-Security-Policy",
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+    }
+    if (dropOrderResponse && request.method === "POST" && request.routeOptions.url === "/api/orders" &&
+        reply.statusCode >= 200 && reply.statusCode < 300) {
+      dropOrderResponse = false;
+      request.log.warn("Test fault: dropping one accepted order response after commit.");
+      reply.hijack();
+      reply.raw.destroy();
     }
     return payload;
   });
@@ -61,7 +70,7 @@ export async function createApp(options: AppOptions): Promise<FastifyInstance> {
       return reply.code(400).send({
         error: {
           code: "VALIDATION_ERROR",
-          message: "Some request fields are invalid.",
+          message: "요청 필드가 올바르지 않습니다.",
           details: { issues: error.issues.map(issue => ({ path: issue.path.join("."), message: issue.message })) },
         },
       });
@@ -69,12 +78,12 @@ export async function createApp(options: AppOptions): Promise<FastifyInstance> {
     if (error instanceof Error && "statusCode" in error && typeof error.statusCode === "number" &&
         error.statusCode >= 400 && error.statusCode < 500) {
       return reply.code(error.statusCode).send({
-        error: { code: "INVALID_REQUEST", message: "The request could not be read. Check its content type and JSON body." },
+        error: { code: "INVALID_REQUEST", message: "요청을 읽을 수 없습니다. Content-Type과 JSON body를 확인해 주세요." },
       });
     }
     request.log.error({ err: error }, "Request failed");
     return reply.code(500).send({
-      error: { code: "INTERNAL_ERROR", message: "The operation could not be completed." },
+      error: { code: "INTERNAL_ERROR", message: "작업을 완료하지 못했습니다." },
     });
   });
 
@@ -126,7 +135,7 @@ export async function createApp(options: AppOptions): Promise<FastifyInstance> {
     if (options.serveClient && request.method === "GET" && !request.url.startsWith("/api")) {
       return reply.sendFile("index.html");
     }
-    return reply.code(404).send({ error: { code: "NOT_FOUND", message: "This route was not found." } });
+    return reply.code(404).send({ error: { code: "NOT_FOUND", message: "요청한 경로를 찾을 수 없습니다." } });
   });
   return app;
 }

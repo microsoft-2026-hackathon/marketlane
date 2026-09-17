@@ -1,23 +1,23 @@
-# Make an uncertain checkout safely retryable
+# 접수 여부가 불확실한 Checkout을 안전하게 재시도하기
 
-## Business request
+## 업무 요청
 
-A customer who loses the checkout response needs a safe way to recover the accepted order,
-not another purchase. Add an explicit, optional checkout idempotency key, scoped to customer,
-and integrate that lifecycle with the browser's submitted draft.
+Checkout 응답을 잃은 고객은 새 구매가 아니라 이미 접수된 주문을 안전하게 복구해야 합니다.
+고객 범위의 명시적·선택적 idempotency key를 추가하고 브라우저에서 전송한 장바구니와
+key의 생명주기를 연결하세요.
 
-## Quick start
+## 빠른 시작
 
-Run `MARKETLANE_DB=.data/checkout-idempotency.sqlite npm run dev` from the repository root.
-Do not use main's default database or share this persisted file with another branch.
-Stop the server before switching branches or resetting. Optional reset:
+루트에서 `MARKETLANE_DB=.data/checkout-idempotency.sqlite npm run dev`를 실행합니다.
+main의 기본 DB나 다른 브랜치와 DB를 공유하지 마세요.
+브랜치 전환·초기화 전 서버를 중지합니다. 필요할 때만 초기화하세요:
 `MARKETLANE_DB=.data/checkout-idempotency.sqlite npm run db:reset -- --confirm`
 
-## Observe current behavior
+## 현재 동작 관찰
 
-Open Shop and Inventory at `http://127.0.0.1:5178`; inspect live stock before ordering.
+`http://127.0.0.1:5178`에서 상품·재고 화면을 열고 주문 전 실제 수량을 확인하세요.
 
-1. With enough stock for two purchases, submit this same request manually twice:
+1. 두 번 구매할 재고가 충분할 때 같은 요청을 수동으로 두 번 보냅니다.
 
 ```sh
 curl -X POST 'http://127.0.0.1:4310/api/orders?locale=en' \
@@ -25,51 +25,46 @@ curl -X POST 'http://127.0.0.1:4310/api/orders?locale=en' \
   -d '{"customerId":"customer-ava","items":[{"productId":"product-arc-lamp","quantity":1}],"note":"Office purchase"}'
 ```
 
-2. Compare `GET /api/orders?customerId=customer-ava` and `GET /api/inventory`.
-   Each successful request creates its own order and stock movement.
-3. Observe that the browser does not automatically retry an ambiguous submission.
-   The current contract has no key; unknown JSON body properties are rejected.
+2. `GET /api/orders?customerId=customer-ava`, `GET /api/inventory`를 비교합니다.
+   성공한 요청마다 별도 주문과 재고 이력이 생깁니다.
+3. 브라우저는 접수 여부가 불확실할 때 자동 재시도하지 않습니다.
+   현재 계약에는 key가 없으며 알 수 없는 JSON body 속성은 거부합니다.
 
-## Acceptance criteria
+## 수용 기준
 
-1. Publish the optional key's HTTP location, permitted characters, length bounds, and
-   whitespace/case normalization policy. Choose and enforce these rules explicitly in
-   server validation and client use. Identical keys for different customers are independent.
-2. Define equivalent requests, including item order, omitted/default fields, effective
-   locale, note handling, and existing coupon trim/case rules. Reordered cart lines alone
-   are equivalent. A changed effective product, quantity, coupon, locale, or note conflicts
-   with a bound key and never creates another order; document the conflict response.
-3. The same customer, key, and equivalent accepted request return the same order ID,
-   number, and checkout snapshots, including after an application restart. Later price,
-   stock, or customer changes must not turn recovery into a new quote or purchase.
-   Document replay HTTP behavior without reverting later fulfillment changes.
-4. Concurrent equivalent submissions converge on one accepted order, one set of checkout
-   movements, and one inventory decrement per line. Concurrent conflicting payloads cannot
-   both succeed. Any temporary in-progress response has a documented, safe retry behavior.
-5. A response lost after commit remains recoverable with the original key and request,
-   even after restarting against the same database. Repeating recovery does not reduce
-   stock again, including when remaining stock would no longer cover a new purchase.
-6. Validation errors, insufficient stock, and transaction failures leave no partial order
-   or inventory changes and no false successful result. Document whether rejected attempts
-   consume a key and how to retry them; failures must not leave an indefinitely stuck key.
-7. The UI retains the submitted request's key through an uncertain response and reload,
-   offers an explicit recovery action, and clears the draft only after confirmed acceptance.
-   Customer switches and cart edits cannot attach a retry to a different purchase; a new
-   intentional purchase gets a new key rather than replaying the previous accepted order.
-8. A request without a key preserves today's behavior: each successful submission creates
-   a new order. Do not silently infer keys from cart contents, notes, or submission timing.
+1. 선택적 key의 HTTP 위치, 허용 문자, 길이, 공백·대소문자 정규화 정책을 공개합니다.
+   Server 검증과 client 사용에 명시적으로 적용합니다. 다른 고객의 동일한 key는 독립적입니다.
+2. 항목 순서, 생략·기본값 필드, 실제 locale, 메모, 기존 쿠폰 trim·대소문자 규칙을 포함해
+   동등 요청을 정의합니다. 항목 순서만 다르면 동등합니다. 실제 상품·수량·쿠폰·locale·메모가
+   바뀌면 결합된 key와 conflict이며 다른 주문을 생성하지 않습니다. Conflict 응답을 문서화합니다.
+3. 같은 고객·key·동등한 접수 요청은 재시작 후에도 같은 주문 ID·번호·Checkout snapshot을
+   반환합니다. 이후 가격·재고·고객 변경 때문에 복구를 새 견적이나 구매로 바꾸면 안 됩니다.
+   이후 Fulfillment 변경을 되돌리지 않는 replay HTTP 동작을 문서화합니다.
+4. 동시 동등 요청은 주문 하나, Checkout 이력 한 묶음, 항목당 재고 차감 한 번으로 수렴합니다.
+   상충하는 동시 payload가 둘 다 성공하면 안 됩니다. 임시 in-progress 응답을 제공한다면
+   안전한 retry 동작을 문서화합니다.
+5. Commit 후 응답을 잃어도 원래 key·요청으로 복구할 수 있고 같은 DB의 재시작 후에도
+   유지됩니다. 복구 반복은 재고를 다시 줄이지 않습니다. 남은 재고가 새 구매를 감당하지
+   못하는 상황도 포함합니다.
+6. 검증 오류·재고 부족·transaction 실패는 일부 주문·재고 변경이나 거짓 성공을 남기지
+   않습니다. 거부된 시도가 key를 소모하는지와 retry 방법을 설명합니다. 실패로 key가
+   무기한 진행 중 상태에 갇히면 안 됩니다.
+7. UI는 불확실한 응답과 새로고침에도 전송한 요청의 key를 유지하고 명시적 복구 동작을
+   제공합니다. 접수 확인 후에만 장바구니를 비웁니다. 고객·장바구니 변경이 retry를 다른
+   구매에 연결하면 안 됩니다. 의도한 새 구매에는 새 key를 발급해 기존 주문을 replay하지 않습니다.
+8. Key 없는 요청은 성공할 때마다 새 주문을 만드는 현재 동작을 유지합니다.
+   장바구니·메모·제출 시각으로 key를 조용히 추론하지 않습니다.
 
-## Boundaries and decisions
+## 범위와 결정
 
-Use the existing local customer context; this adds no authentication or payment processor.
-Reservations and inventory-import identities are not prerequisites. Preserve pricing,
-order snapshots, and fulfillment. Document the new request/retry contract and upgrade
-existing databases without discarding orders.
+기존 로컬 고객 context를 사용하며 인증·payment processor는 추가하지 않습니다.
+예약·inventory import identity는 전제 조건이 아닙니다. 가격 규칙, 주문 snapshot,
+Fulfillment를 유지합니다. 새 요청·retry 계약을 문서화하고 기존 주문을 버리지 않고 DB를 migration합니다.
 
-## Code starting points
+## 코드 시작점
 
-- `shared/contracts.ts` and `server/app.ts`: checkout input and error contracts.
-- `server/orders/service.ts` and `server/orders/repository.ts`: accepted checkout persistence.
-- `server/db/migrations.ts`: durable key state and existing-database upgrades.
-- `client/`: API client, checkout submission state, customer context, and browser drafts.
-- `test/*.test.ts`: existing transaction, restart, and HTTP coverage locations.
+- `shared/contracts.ts`, `server/app.ts`: Checkout 입력·오류 계약.
+- `server/orders/service.ts`, `server/orders/repository.ts`: 접수 주문 저장.
+- `server/db/migrations.ts`: 영속 key 상태와 기존 DB upgrade.
+- `client/`: API client, 제출 상태, 고객 context, 브라우저 초안.
+- `test/*.test.ts`: transaction·재시작·HTTP 테스트.
