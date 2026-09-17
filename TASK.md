@@ -1,69 +1,65 @@
-# Offer a five-minute cart hold
+# 장바구니 재고를 5분간 예약하기
 
-## Business request
+## 업무 요청
 
-Let a customer optionally hold a cart while deciding to purchase. Show when the hold ends,
-protect those units from other buyers, and keep ordinary checkout without a hold available.
-A hold protects quantities, not prices, and is separate from the browser's draft.
+고객이 구매를 결정하는 동안 장바구니 재고를 선택적으로 예약할 수 있게 하세요.
+종료 시각을 표시하고 다른 구매자로부터 수량을 보호하되 예약 없는 일반 Checkout도 유지합니다.
+예약은 가격이 아닌 수량을 보호하며 브라우저 초안과는 별개입니다.
 
-## Quick start
+## 빠른 시작
 
-Run `MARKETLANE_DB=.data/stock-reservations.sqlite npm run dev` from the repository root.
-Do not use main's default database or share this persisted file with another branch.
-Stop the server before switching branches or resetting. Optional reset:
+루트에서 `MARKETLANE_DB=.data/stock-reservations.sqlite npm run dev`를 실행합니다.
+main의 기본 DB나 다른 브랜치와 DB를 공유하지 마세요.
+브랜치 전환·초기화 전 서버를 중지합니다. 필요할 때만 초기화하세요:
 `MARKETLANE_DB=.data/stock-reservations.sqlite npm run db:reset -- --confirm`
 
-## Observe current behavior
+## 현재 동작 관찰
 
-Open Shop and Inventory at `http://127.0.0.1:5178` and inspect actual available quantities.
+`http://127.0.0.1:5178`의 상품·재고 화면에서 실제 판매 가능 수량을 확인하세요.
 
-1. Select customer-ava, add a stocked product such as product-arc-lamp, and request a quote.
-2. Switch to customer-min and quote the same quantities. `POST /api/quotes` takes
+1. customer-ava로 product-arc-lamp 등 재고 있는 상품을 담고 견적을 요청합니다.
+2. customer-min으로 바꿔 같은 수량의 견적을 요청합니다. `POST /api/quotes`의 입력 예시:
    `{ "customerId": "customer-min", "items": [{ "productId": "product-arc-lamp", "quantity": 1 }] }`.
-3. Compare `GET /api/catalog?inStock=true` and `GET /api/inventory` before and after quoting.
-   A quote does not change stock or create a hold. Only a successful `POST /api/orders`
-   currently claims units. Do not assume the seed has a particular remaining quantity.
+3. 견적 전후 `GET /api/catalog?inStock=true`, `GET /api/inventory`를 비교합니다.
+   견적은 재고를 바꾸거나 예약하지 않습니다. 현재는 성공한 `POST /api/orders`만 수량을
+   차감합니다. Seed의 남은 수량을 추측하지 마세요.
 
-## Acceptance criteria
+## 수용 기준
 
-1. Provide documented create, edit, release, and inspect operations for an optional hold,
-   bound to a customer and exact product quantities. Invalid carts retain current cart
-   limits. Document whether multiple active holds per customer are allowed and show which
-   hold the browser draft uses; switching customer cannot use another customer's hold.
-2. Creation and each explicit successful hold edit set expiration to five minutes from
-   server time. Reads, quotes, UI refreshes, and failed edits never extend it. Return the
-   expiration timestamp; the UI displays time remaining and a clear expired state.
-3. Distinguish physical stockOnHand from sellable availability. Active holds reduce the
-   latter without posting a physical stock movement. Catalog inStock filtering, quotes,
-   ordinary checkout, and negative adjustments must respect units held for other carts.
-4. Create, resize, release, and expiration are atomic with competing inventory operations.
-   Failed increases preserve the prior quantities and expiration; reductions free units
-   immediately. Repeated release or expiry cannot free the same units more than once.
-5. Checkout with an active matching hold counts the owner's held units only once, uses
-   current prices, and atomically consumes the hold with the order and physical decrement.
-   Wrong-customer or mismatched-cart references reject explicitly. Reusing a consumed hold
-   cannot create another order; general checkout idempotency is not required.
-6. At server time equal to or later than expiresAt, hold checkout rejects even if stock
-   happens to be free. Expired holds cannot be edited or silently resurrected by checkout;
-   obtaining another hold requires explicit creation. Checkout racing expiry has one
-   consistent outcome, never both a sale and availability for a competing sale.
-7. Restarting the application retains active holds and their original expiration, while
-   already elapsed holds no longer reduce availability. Use the existing injected Clock
-   seam so just-before, exact-boundary, and just-after behavior is observable without waits.
-8. The UI makes reserving optional, distinguishes held units from unheld availability,
-   and surfaces failed edits or expired checkout without claiming success or losing the
-   draft. Existing non-reserving checkout stays supported and cannot consume others' holds.
+1. 고객·정확한 상품 수량에 결합된 선택적 예약의 생성·수정·해제·조회를 문서화합니다.
+   기존 장바구니 제한을 유지합니다. 고객별 복수 활성 예약 허용 여부를 설명하고 브라우저
+   초안이 사용하는 예약을 보여줍니다. 고객 전환으로 다른 고객 예약을 사용할 수 없습니다.
+2. 생성과 명시적으로 성공한 수정은 서버 시각에서 5분 뒤로 만료를 정합니다.
+   조회·견적·UI 새로고침·실패한 수정은 연장하지 않습니다. 만료 timestamp를 반환하고
+   UI는 남은 시간과 명확한 만료 상태를 표시합니다.
+3. 물리 stockOnHand와 판매 가능 수량을 구분합니다. 활성 예약은 물리 재고 이력 없이
+   판매 가능 수량만 줄입니다. Catalog inStock 필터, 견적, 일반 Checkout, 음수 조정은
+   다른 장바구니의 예약 수량을 존중해야 합니다.
+4. 생성·크기 변경·해제·만료는 경합하는 재고 작업과 원자적으로 처리합니다. 수량 증가 실패는
+   기존 수량·만료를 보존하고 감소는 즉시 수량을 풀어줍니다. 해제·만료 반복으로 같은 수량을
+   두 번 이상 풀면 안 됩니다.
+5. 일치하는 활성 예약의 Checkout은 소유자 수량을 한 번만 계산하고 현재 가격을 적용하며,
+   예약 소모·주문·물리 차감을 원자적으로 처리합니다. 다른 고객·불일치 장바구니 참조는
+   명시적으로 거부합니다. 소모된 예약 재사용으로 새 주문을 만들 수 없습니다.
+   일반 Checkout idempotency는 필수가 아닙니다.
+6. 서버 시각이 expiresAt 이상이면 재고가 남아 있어도 예약 Checkout을 거부합니다.
+   만료 예약을 수정하거나 Checkout이 조용히 되살릴 수 없습니다. 새 예약은 명시적으로 생성해야
+   합니다. 만료·Checkout 경합은 일관된 결과 하나만 만들고 판매와 경쟁 판매용 수량이 공존하면 안 됩니다.
+7. 재시작 후 활성 예약과 원래 만료를 유지하고 이미 만료된 예약은 판매 가능 수량을 줄이지
+   않습니다. 기존 주입 Clock으로 실제 대기 없이 만료 직전·정확한 경계·직후를 관찰합니다.
+8. UI는 예약을 선택적으로 제공하고 예약 수량과 비예약 판매 가능 수량을 구분합니다.
+   수정 실패·만료 Checkout을 성공으로 표시하거나 초안을 잃지 않습니다. 기존 비예약 Checkout도
+   유지하며 다른 예약 수량을 소모할 수 없습니다.
 
-## Boundaries and decisions
+## 범위와 결정
 
-No payment capture, price lock, automatic renewal, or authentication changes are requested.
-Do not require checkout keys, new promotion rules, or cancellation support. Expiration
-processing is an implementation choice; the timing and race guarantees are not.
-Document hold lifecycle, availability fields, and durable schema upgrades.
+실제 결제·가격 고정·자동 연장·인증 변경은 없습니다. Checkout key, 새 프로모션, 취소를
+요구하지 마세요. 만료 처리 방식은 구현 선택이지만 시간·경합 보장은 선택 사항이 아닙니다.
+예약 생명주기, 판매 가능 수량 필드, 영속 schema migration을 문서화합니다.
 
-## Code starting points
+## 코드 시작점
 
-- `server/inventory/service.ts` and `server/catalog/repository.ts`: availability and adjustments.
-- `server/orders/service.ts` and `server/pricing/pricing.ts`: checkout and quote stock decisions.
-- `server/domain/clock.ts`, `server/db/migrations.ts`, and `server/app.ts`: Clock and persistence.
-- `shared/contracts.ts` and `client/`: hold references, expiration, and optional cart controls.
+- `server/inventory/service.ts`, `server/catalog/repository.ts`: 판매 가능 수량과 조정.
+- `server/orders/service.ts`, `server/pricing/pricing.ts`: Checkout·견적의 재고 판단.
+- `server/domain/clock.ts`, `server/db/migrations.ts`, `server/app.ts`: Clock과 저장.
+- `shared/contracts.ts`, `client/`: 예약 참조, 만료, 선택적 장바구니 UI.

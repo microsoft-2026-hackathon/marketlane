@@ -2,7 +2,7 @@
   "name": "marketlane",
   "version": "1.0.0",
   "private": true,
-  "description": "Workspace goods storefront and fulfillment console.",
+  "description": "Wellactually 테스트 및 데모용 상품 스토어와 주문·재고 운영 콘솔.",
   "type": "module",
   "engines": {
     "node": ">=20.19.0",
@@ -16,6 +16,7 @@
     "build": "npm run typecheck && tsc -p tsconfig.server.json && vite build",
     "start": "node dist/server/main.js",
     "test": "node --import tsx --test test/*.test.ts",
+    "pairing:prepare": "tsx scripts/prepare-pairing.ts",
     "db:reset": "tsx server/reset.ts"
   },
   "dependencies": {

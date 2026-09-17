@@ -47,7 +47,7 @@ export function errorMessage(error: unknown): string {
     const available = error.details?.available;
     const sku = error.details?.sku;
     if (error.code === "INSUFFICIENT_STOCK" && typeof available === "number") {
-      return `${error.message}${typeof sku === "string" ? ` ${sku}:` : ""} ${available} available. Update the quantity or remove the item.`;
+      return `${error.message}${typeof sku === "string" ? ` ${sku}:` : ""} 현재 재고 ${available}개. 수량을 수정하거나 상품을 삭제해 주세요.`;
     }
     const issues = error.details?.issues;
     if (Array.isArray(issues)) {
@@ -63,9 +63,9 @@ export function errorMessage(error: unknown): string {
     return error.message;
   }
   if (error instanceof TypeError) {
-    return "Could not reach Marketlane. Check the local server and your connection, then try again.";
+    return "Marketlane에 연결하지 못했습니다. 로컬 서버와 연결 상태를 확인해 주세요.";
   }
-  return error instanceof Error ? error.message : "An unexpected error occurred. Please try again.";
+  return error instanceof Error ? error.message : "예상하지 못한 오류가 발생했습니다. 다시 시도해 주세요.";
 }
 
 function queryString(values: Record<string, string | number | boolean | undefined>): string {
@@ -92,7 +92,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   } catch (error) {
     if (isAbortError(error)) throw error;
     if (error instanceof SyntaxError) {
-      throw new Error(`Marketlane returned an unreadable response (HTTP ${response.status}).`);
+      throw new Error(`Marketlane 응답을 읽을 수 없습니다 (HTTP ${response.status}).`);
     }
     throw error;
   }
@@ -100,7 +100,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     if (isErrorPayload(payload)) {
       throw new ApiError(payload.error.message, response.status, payload.error.code, payload.error.details);
     }
-    throw new ApiError(`The request failed (HTTP ${response.status}).`, response.status, "HTTP_ERROR", undefined);
+    throw new ApiError(`요청을 처리하지 못했습니다 (HTTP ${response.status}).`, response.status, "HTTP_ERROR", undefined);
   }
   return payload as T;
 }

@@ -11,5 +11,5 @@ export class AppError extends Error {
 }
 
 export function notFound(entity: string): never {
-  throw new AppError(404, "NOT_FOUND", `${entity} was not found.`);
+  throw new AppError(404, "NOT_FOUND", `${entity} 항목을 찾을 수 없습니다.`);
 }

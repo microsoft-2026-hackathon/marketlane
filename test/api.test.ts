@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { request as httpRequest } from "node:http";
 import test from "node:test";
 import type { ApiErrorPayload, CartQuote, CatalogPage, Order, Overview, Product } from "../shared/contracts.js";
 import { getProduct } from "../server/catalog/repository.js";
@@ -35,6 +36,36 @@ test("quote and checkout HTTP responses use shared shapes and server-authoritati
   const detail = await app.inject(`/api/orders/${order.id}`);
   assert.deepEqual(detail.json<{ order: Order }>().order, order);
   assert.equal(detail.headers["cache-control"], "no-store");
+});
+
+test("the opt-in fault loses one successful checkout response without rolling back or retrying", async t => {
+  const { app, database } = await appFixture(t, { dropOrderResponseOnce: true });
+  const address = await app.listen({ host: "127.0.0.1", port: 0 });
+  const before = counts(database);
+  const stock = getProduct(database, "product-arc-lamp").stockOnHand;
+  const invalid = await app.inject({ method: "POST", url: "/api/orders", payload: { ...lampCart, items: [] } });
+  assert.equal(invalid.statusCode, 400);
+  assert.equal((await app.inject({ method: "POST", url: "/api/quotes", payload: lampCart })).statusCode, 200);
+  assert.deepEqual(counts(database), before);
+
+  await assert.rejects(new Promise<number | undefined>((resolve, reject) => {
+    const request = httpRequest(`${address}/api/orders?locale=ko`, {
+      method: "POST", headers: { "content-type": "application/json" },
+    }, response => {
+      response.resume();
+      resolve(response.statusCode);
+    });
+    request.once("error", reject);
+    request.setTimeout(3000, () => request.destroy(new Error("Expected a dropped connection, not a timeout.")));
+    request.end(JSON.stringify(lampCart));
+  }), { code: "ECONNRESET" });
+  assert.deepEqual(counts(database), { orders: before.orders + 1, lines: before.lines + 1, movements: before.movements + 1 });
+  assert.equal(getProduct(database, "product-arc-lamp").stockOnHand, stock - 1);
+
+  const next = await app.inject({ method: "POST", url: "/api/orders", payload: lampCart });
+  assert.equal(next.statusCode, 201);
+  assert.equal(counts(database).orders, before.orders + 2);
+  assert.equal(getProduct(database, "product-arc-lamp").stockOnHand, stock - 2);
 });
 
 test("invalid quantities, unknown body fields, and duplicate lines are rejected before writes", async t => {
