@@ -1,5 +1,5 @@
 sku,delta,reason,reference
-DSK-001,4,"Supplier delivery, desk lighting",receipt-desk-001
-CRY-002,3,"Shelf recount: ""Carry"" section",count-carry-002
-PPR-006,6,Stationery delivery,receipt-paper-006
-DSK-001,-1,Damaged shade,damage-desk-001
+DSK-001,4,"공급업체 입고, 책상 조명",receipt-desk-001
+CRY-002,3,"재고 실사: ""Carry"" 구역",count-carry-002
+PPR-006,6,문구류 입고,receipt-paper-006
+DSK-001,-1,갓 파손,damage-desk-001

@@ -33,33 +33,33 @@ export function decodeStoredCart(raw: string | null): StoredCartResult {
     value = JSON.parse(raw);
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error;
-    return { ok: false, message: "The saved cart is not readable JSON." };
+    return { ok: false, message: "저장된 장바구니를 JSON으로 읽을 수 없습니다." };
   }
   if (!validateCartLines(value)) {
-    return { ok: false, message: "The saved cart contains invalid items or quantities." };
+    return { ok: false, message: "저장된 장바구니의 상품이나 수량이 올바르지 않습니다." };
   }
   return { ok: true, items: value.map(({ productId, quantity }) => ({ productId, quantity })) };
 }
 
 export function encodeStoredCart(items: CartLine[]): string {
-  if (!validateCartLines(items)) throw new Error("The draft cart contains invalid items or quantities.");
+  if (!validateCartLines(items)) throw new Error("장바구니의 상품이나 수량이 올바르지 않습니다.");
   return JSON.stringify(items.map(({ productId, quantity }) => ({ productId, quantity })));
 }
 
 export function cartStorageKey(customerId: string): string {
-  if (!validProductId(customerId)) throw new Error("Select a customer before using a cart.");
+  if (!validProductId(customerId)) throw new Error("장바구니를 사용하려면 고객을 선택해 주세요.");
   return `marketlane.cart.v1:${encodeURIComponent(customerId)}`;
 }
 
 export function setLineQuantity(items: CartLine[], productId: string, quantity: number): CartLine[] {
-  if (!validateCartLines(items)) throw new Error("The draft cart needs to be recovered before it can be edited.");
-  if (!validProductId(productId)) throw new Error("This product has an invalid ID.");
+  if (!validateCartLines(items)) throw new Error("장바구니를 복구한 뒤 수정해 주세요.");
+  if (!validProductId(productId)) throw new Error("상품 ID가 올바르지 않습니다.");
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
-    throw new Error(`Use a whole quantity between 1 and ${MAX_QUANTITY}.`);
+    throw new Error(`1~${MAX_QUANTITY} 사이의 정수를 입력해 주세요.`);
   }
   const exists = items.some((item) => item.productId === productId);
   if (!exists && items.length >= MAX_CART_LINES) {
-    throw new Error(`A cart can contain at most ${MAX_CART_LINES} different products.`);
+    throw new Error(`장바구니에는 최대 ${MAX_CART_LINES}종의 상품을 담을 수 있습니다.`);
   }
   return exists
     ? items.map((item) => item.productId === productId ? { productId, quantity } : item)
@@ -67,7 +67,7 @@ export function setLineQuantity(items: CartLine[], productId: string, quantity: 
 }
 
 export function addCartLine(items: CartLine[], productId: string, quantity = 1): CartLine[] {
-  if (!Number.isInteger(quantity) || quantity < 1) throw new Error("Choose a positive whole quantity.");
+  if (!Number.isInteger(quantity) || quantity < 1) throw new Error("수량은 양의 정수로 입력해 주세요.");
   const existing = items.find((item) => item.productId === productId)?.quantity ?? 0;
   return setLineQuantity(items, productId, existing + quantity);
 }

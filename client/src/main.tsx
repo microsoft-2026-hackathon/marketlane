@@ -16,9 +16,9 @@ class AppBoundary extends Component<{ children: ReactNode }, { error: Error | nu
 
   render() {
     if (this.state.error) return <main className="fatal-error">
-      <p className="eyebrow">MARKETLANE</p><h1>This view could not be displayed.</h1>
-      <p>{this.state.error.message}</p><p>Your saved drafts have not been cleared. Reload to open the workspace again.</p>
-      <button className="button button-primary" onClick={() => window.location.reload()}>Reload Marketlane</button>
+      <p className="eyebrow">MARKETLANE</p><h1>화면을 표시하지 못했습니다.</h1>
+      <p>{this.state.error.message}</p><p>저장된 장바구니는 삭제하지 않았습니다. 새로고침해서 다시 열어 주세요.</p>
+      <button className="button button-primary" onClick={() => window.location.reload()}>Marketlane 새로고침</button>
     </main>;
     return this.props.children;
   }
