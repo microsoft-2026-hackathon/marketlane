@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDatabase } from "../server/db/database.js";
@@ -84,6 +84,29 @@ function git(args: string[]): string {
   return execFileSync("git", args, { cwd: sourceRoot, encoding: "utf8" });
 }
 
+export function loadPairingTask(task: string): { taskText: string; assets: Record<string, Buffer> } {
+  const scenario = scenarioFor(task);
+  const directory = path.join(sourceRoot, "tasks", task);
+  if (existsSync(path.join(directory, "TASK.md"))) {
+    return {
+      taskText: readFileSync(path.join(directory, "TASK.md"), "utf8"),
+      assets: Object.fromEntries(scenario.assets.map(filename => [filename,
+        readFileSync(path.join(directory, filename)),
+      ])),
+    };
+  }
+  const candidates = [`refs/heads/task/${task}`, `refs/remotes/origin/task/${task}`];
+  const available = new Set(git(["for-each-ref", "--format=%(refname)", ...candidates]).trim().split("\n"));
+  const taskRef = candidates.find(candidate => available.has(candidate));
+  if (!taskRef) throw new Error(`tasks/${task}/TASK.md와 task/${task} 브랜치가 없습니다. git fetch origin을 실행해 주세요.`);
+  return {
+    taskText: git(["show", `${taskRef}:TASK.md`]),
+    assets: Object.fromEntries(scenario.assets.map(filename => [filename,
+      execFileSync("git", ["show", `${taskRef}:${filename}`], { cwd: sourceRoot }),
+    ])),
+  };
+}
+
 function isWithin(parent: string, child: string): boolean {
   const relative = path.relative(parent, child);
   return relative === "" || (!path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${path.sep}`));
@@ -93,6 +116,8 @@ export function preparePairingRuns(task: string, outputPath: string, taskText: s
   const scenario = scenarioFor(task);
   const brief = /^# [^\n]+\n\s*## (?:Business request|업무 요청)\s*\n([\s\S]*?)(?=\n## )/.exec(taskText);
   if (!brief) throw new Error("The task must contain a title and a Business request before other sections.");
+  const openingQuestion = /\n## Pair 시작 질문[ \t]*\r?\n([\s\S]*?)(?=\n## |$)/.exec(taskText)?.[1]?.trim()
+    ?? "> TASK.md의 업무 요청을 같이 살펴보자. 현재 코드를 기준으로 어디부터 확인하면 좋을까?";
   for (const filename of scenario.assets) {
     if (!assets[filename]) throw new Error(`Missing task input: ${filename}`);
   }
@@ -152,7 +177,7 @@ Driver 작업 후 구체적인 관찰 결과와 함께 Pair로 돌아옵니다.
 Pair에게 완성된 구현 프롬프트를 대신 쓰게 하지 마세요.
 
 TASK.full.md에는 원본 구현 실습 계약이 보존됩니다. 그 문서의 DB 실행 명령은
-원본 태스크 브랜치용입니다. 내보낸 환경에서는 각 RUN.md를 따르세요.
+원본 repository에서 해당 과제를 실행할 때의 설정입니다. 내보낸 환경에서는 각 RUN.md를 따르세요.
 발견 중심 실험에서 전달하지 않은 요구사항을 숨은 채점 기준으로 쓰면 안 됩니다.
 계약 구현 실험은 작업 전에 상세 기준을 공개하고 별도 조건으로 기록합니다.
 질문받은 비즈니스 제약은 알려주되 구현 방식과 trade-off는 열어 두세요.
@@ -207,12 +232,18 @@ SQLite 파일과 -wal/-shm sidecar를 제거하고, baseline.sqlite를 그 폴�
     if (!scenario.evaluatorOnly) {
       for (const filename of scenario.assets) writeFileSync(path.join(run, filename), assets[filename]!);
     }
-    writeFileSync(path.join(run, "TASK.md"), `${taskText.split("\n")[0]}\n\n## 업무 요청\n\n${brief[1]!.trim()}\n\n기존 제품 규칙을 보존하세요. 미정인 동작과 범위는 사용자와 논의하세요.\n`);
+    writeFileSync(path.join(run, "TASK.md"), `${taskText.split("\n")[0]}\n\n## 업무 요청\n\n${brief[1]!.trim()}\n\n기존 제품 규칙 중 이 업무 요청에서 바꾸는 동작 외에는 보존하세요. 미정인 동작과 범위는 사용자와 논의하세요.\n\n## Pair 시작 질문\n\n${openingQuestion}\n`);
     writeFileSync(path.join(run, "RUN.md"), `# ${task}: ${mode}
 
 VS Code에서 이 폴더만 열고 Wellactually ${mode}의 새 Pair 세션을 시작하세요.
 TASK.md로 논의를 시작합니다. 사용자가 판단하고 Driver 지시를 작성하며,
 Driver 작업을 관찰한 뒤 Pair로 돌아옵니다.
+
+## Pair 시작 질문
+
+${openingQuestion}
+
+## 실행
 
 npm ci, npm run dev 순서로 실행하고 http://127.0.0.1:5178 을 엽니다.
 다른 실험에서 상속된 MARKETLANE_DB, MARKETLANE_FAULT, PORT는 해제하세요.
@@ -232,15 +263,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   try {
     const [task, output, ...extra] = process.argv.slice(2);
     if (!task || !output || extra.length) throw new Error("Usage: npm run pairing:prepare -- <task> <new-output-directory>");
-    const scenario = scenarioFor(task);
-    const candidates = [`refs/heads/task/${task}`, `refs/remotes/origin/task/${task}`];
-    const available = new Set(git(["for-each-ref", "--format=%(refname)", ...candidates]).trim().split("\n"));
-    const taskRef = candidates.find(candidate => available.has(candidate));
-    if (!taskRef) throw new Error(`task/${task} 브랜치가 없습니다. git fetch origin을 실행해 주세요.`);
-    const taskText = git(["show", `${taskRef}:TASK.md`]);
-    const assets = Object.fromEntries(scenario.assets.map(filename => [filename,
-      execFileSync("git", ["show", `${taskRef}:${filename}`], { cwd: sourceRoot }),
-    ]));
+    const { taskText, assets } = loadPairingTask(task);
     console.log(`네 mode workspace와 평가자 자료를 생성했습니다: ${preparePairingRuns(task, output, taskText, assets)}`);
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);

@@ -4,6 +4,18 @@
 구분합니다. 비교할 때 어떤 조건이었는지 명시하세요. 앱 테스트는 Navigator 품질이나
 개발자의 학습 효과를 측정하지 않습니다.
 
+## 과제와 첫 질문
+
+원본 repository의 [TASK.md](../TASK.md)는 과제 목록과 첫 실습 안내입니다.
+각 `tasks/<태스크>/TASK.md`에는 업무 요청, Pair 시작 질문, 관찰 방법, 수용 기준,
+범위와 코드 시작점이 있습니다. `main`에서 바로 읽고 선택한 문서를 Pair에 첨부할 수
+있습니다. 기존 `task/*` 브랜치로 전환할 필요는 없습니다.
+
+상세 계약을 처음부터 공유하는 실습에서는 선택한 원문을 사용하세요. 아래 명령으로
+내보내는 발견 중심 실험은 **짧은 업무 요청과 시작 질문**만 전달합니다. 출력의
+`TASK.md`와 `RUN.md`에 질문이 함께 들어가므로 별도 질문을 찾을 필요가 없습니다.
+여기서 말하는 원본 과제 모음은 내보낸 mode 폴더에는 없습니다.
+
 ## 독립 실행 환경 준비
 
 원본 repository에서 의존성을 설치하고 저장소 밖의 새 폴더로 내보냅니다.
@@ -15,8 +27,9 @@ npm run pairing:prepare -- catalog-cache ../marketlane-cache-session-01
 
 태스크: `catalog-cache`, `catalog-pagination`, `checkout-idempotency`, `daily-sales`,
 `inventory-import`, `order-cancellation`, `promotion-rules`, `stock-reservations`.
-로컬 `task/<name>` 브랜치를 우선 읽고 없으면 `origin/task/<name>`을 읽습니다.
-새 clone에서는 `git fetch origin`으로 remote ref를 가져올 수 있습니다.
+우선 현재 `tasks/<name>/TASK.md`와 같은 폴더의 입력 예시를 읽습니다. 현재 `main`만
+clone해도 여덟 과제를 준비할 수 있습니다. 해당 정본 파일이 없는 이전 작업 환경만
+로컬 `task/<name>`, `origin/task/<name>` 순서로 찾아 호환합니다.
 브랜치 전환·reset·commit·태스크 구현은 수행하지 않습니다.
 기존 출력 경로와 원본 저장소 내부 경로는 거부합니다.
 
@@ -36,7 +49,7 @@ marketlane-cache-session-01/
 ```
 
 VS Code에서는 mode 폴더 하나만 열고 상위 폴더나 원본 repository는 열지 마세요.
-Git 이력·의존성·생성 build·실험 준비 코드와 테스트를 제외한 source snapshot입니다.
+Git 이력·의존성·생성 build·전체 과제 모음·실험 준비 코드와 테스트를 제외한 source snapshot입니다.
 해당 폴더에서 `npm ci`를 실행합니다. `npm test`, `npm run build`도 사용할 수 있습니다.
 `npm run dev`로 실행하고 **http://127.0.0.1:5178** 을 엽니다. 해당 `RUN.md`를 따르세요.
 
@@ -49,7 +62,7 @@ filesystem 접근 차단이 아닙니다. 넓은 파일·shell 권한으로는 �
 강한 격리가 필요하면 다른 장치·계정에 자료를 두고 filesystem 접근을 제한하세요.
 프롬프트에 평가자 자료 경로를 넣지 마세요.
 
-상세 태스크는 `evaluator/TASK.full.md`에 그대로 보존합니다. 그 문서의 브랜치별 실행 명령은
+상세 태스크는 `evaluator/TASK.full.md`에 그대로 보존합니다. 그 문서의 과제별 실행 명령은
 내보낸 환경에 적용하지 않습니다. 평가자 가이드는 후속 상황·관찰 기록·데이터 복원을 안내합니다.
 CSV 업무 입력은 처음부터 제공하고 일별 매출 timestamp 경계 예시는 평가자가 공개할 때까지 보관합니다.
 
