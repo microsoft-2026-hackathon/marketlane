@@ -41,7 +41,7 @@ export function changeStock(
     WHERE product_id = ? AND stock_on_hand + ? BETWEEN 0 AND 1000000
   `).run(delta, timestamp, product.id, delta);
   if (result.changes !== 1) {
-    throw new AppError(409, delta < 0 ? "INSUFFICIENT_STOCK" : "STOCK_LIMIT", "The stock change cannot be applied.", {
+    throw new AppError(409, delta < 0 ? "INSUFFICIENT_STOCK" : "STOCK_LIMIT", "재고 변경을 적용할 수 없습니다.", {
       sku: product.sku, available: getProduct(database, product.id).stockOnHand, requested: Math.abs(delta),
     });
   }

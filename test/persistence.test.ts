@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -74,5 +74,25 @@ test("reset requires confirmation and affects only the explicitly configured dat
     assert.equal(getProduct(restored, "product-arc-lamp").stockOnHand, 17);
   } finally {
     restored.close();
+  }
+});
+
+test("response-loss faults require a recognized value and development mode before opening a database", t => {
+  const directory = mkdtempSync(path.join(tmpdir(), "marketlane-fault-config-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const filename = path.join(directory, "store.sqlite");
+  for (const [fault, args, message] of [
+    ["drop-order-response-once", [], /available only with --dev/],
+    ["drop-order-response-typo", ["--dev"], /must be unset or drop-order-response-once/],
+  ] as const) {
+    const result = spawnSync(process.execPath, ["--import", "tsx", "server/main.ts", ...args], {
+      cwd: fileURLToPath(new URL("../", import.meta.url)),
+      env: { ...process.env, MARKETLANE_DB: filename, MARKETLANE_FAULT: fault },
+      encoding: "utf8",
+      timeout: 5000,
+    });
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, message);
+    assert.equal(existsSync(filename), false);
   }
 });

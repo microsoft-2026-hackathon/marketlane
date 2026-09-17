@@ -1,74 +1,63 @@
-# Product rules
+# 제품 규칙
 
-## Catalog and language
+## Catalog와 언어
 
-The catalog has stable product IDs and SKUs. English is the required content
-language; Korean content is optional. A Korean request without a translation
-falls back to English and identifies the actual `contentLocale`. Search uses
-the displayed localized name, description, and SKU. `%` and `_` in a search
-are literal characters, not SQL wildcards.
+상품 ID와 SKU는 안정적으로 유지합니다. 영어 상품 정보는 필수이고 한국어는 선택입니다.
+한국어 요청에 번역이 없으면 영어로 fallback하며 실제 표시 언어를 `contentLocale`로 알립니다.
+화면은 한국어를 기본으로 사용하고 상품 정보만 한국어·영어로 전환합니다.
+검색 대상은 표시 중인 언어의 이름·설명과 SKU입니다. `%`, `_`는 SQL wildcard가 아닌
+문자 그대로 검색합니다.
 
-Catalog pagination is currently page/offset based. Sorts have a stable product
-ID tiebreaker. Product updates affect subsequent reads and checkouts, not
-already accepted orders. Inventory availability is current stock on hand.
-No catalog response cache or stock reservation exists.
+Catalog pagination은 page/offset 기반입니다. 정렬 값이 같으면 상품 ID로 순서를 결정합니다.
+상품 수정은 이후 조회·Checkout에 반영하며 이미 접수된 주문에는 영향을 주지 않습니다.
+판매 가능 재고는 현재 물리 재고입니다. Catalog 응답 cache와 재고 예약은 없습니다.
 
-## Cart and pricing
+## 장바구니와 가격
 
-A cart is local browser state. It contains product IDs and positive whole
-quantities, never authoritative prices. At most 40 distinct products and 99
-units of any one product are allowed. Duplicate product IDs in a request are
-rejected rather than counted twice.
+장바구니는 브라우저의 로컬 상태입니다. 상품 ID와 양의 정수 수량만 가지며 확정 가격은
+저장하지 않습니다. 최대 40종, 상품별 99개까지 허용합니다. 요청에 중복 상품 ID가 있으면
+합산하지 않고 거부합니다.
 
-Quotes and checkout use the same pricing function. A quote is read-only and
-does not guarantee future availability. All requested products must exist
-and have sufficient stock.
+견적과 Checkout은 같은 가격 함수를 사용합니다. 견적은 읽기 전용이며 이후 재고를
+보장하지 않습니다. 요청한 모든 상품이 존재하고 재고가 충분해야 합니다.
 
-Money is integer USD cents. Each line subtotal is unit price times quantity.
-For the currently supported percentage coupon, each line discount is rounded
-down to a whole cent; the order discount is the sum of line discounts.
-`WELCOME10` requires a merchandise subtotal of at least 5,000 cents and reduces
-each line by 10%. Coupon codes are trimmed and case-insensitive. Unknown,
-inactive, or below-minimum coupons are rejected explicitly.
+금액 단위는 정수 USD cents입니다. 항목별 소계는 단가 × 수량입니다.
+현재 비율 쿠폰은 항목별 할인액을 1 cent 단위로 내림하며, 주문 할인액은 그 합계입니다.
+`WELCOME10`은 상품 소계 5,000 cents 이상에서 각 항목을 10% 할인합니다.
+쿠폰은 앞뒤 공백을 제거하고 대소문자를 구분하지 않습니다. 미등록·비활성 쿠폰과
+최소 금액 미달은 명시적인 오류로 처리합니다.
 
-Shipping is 590 cents when discounted merchandise is below 10,000 cents,
-otherwise zero. There is no tax calculation or currency conversion.
-Server-calculated totals are the source of truth.
+할인 후 상품 금액이 10,000 cents 미만이면 배송비 590 cents, 이상이면 무료입니다.
+세금 계산과 환율 변환은 없습니다. 서버가 계산한 합계가 source of truth입니다.
 
-## Orders and fulfillment
+## 주문과 Fulfillment
 
-Checkout validates the customer and cart, reloads prices and stock, writes the
-order and its line snapshots, and decreases stock in one SQLite transaction.
-A failed checkout leaves no order or partial inventory movement. Stock cannot
-become negative. Checkout currently creates a new order for each successful
-request; the browser must not automatically retry an ambiguous submission.
+Checkout은 하나의 SQLite transaction에서 고객·장바구니를 검증하고, 현재 가격·재고를
+다시 읽고, 주문 및 항목 snapshot을 기록하고, 재고를 차감합니다. 실패하면 주문이나
+일부 재고 이력이 남지 않습니다. 재고는 음수가 될 수 없습니다.
+성공한 요청마다 새 주문이 생성되므로, 접수 여부가 불확실할 때 브라우저는 자동 재시도하면 안 됩니다.
 
-An order snapshots the customer, displayed product names, SKUs, categories,
-prices, quantities, discounts, shipping, and total. Later catalog/customer
-changes must not rewrite historical orders.
+주문에는 고객, 표시된 상품명, SKU, 분류, 가격, 수량, 할인, 배송비, 합계의 snapshot을
+저장합니다. 이후 상품·고객 수정으로 과거 주문을 다시 쓰면 안 됩니다.
 
-Fulfillment is `placed -> packing -> shipped`. Repeating the current status is
-a no-op; skipping or reversing a transition is a conflict. Packing and shipping
-do not change stock again. The corresponding transition timestamps are stored.
-Cancellation, returns, actual payment capture, and refunds are not implemented.
+상태 전이는 `placed -> packing -> shipped`입니다. 현재 상태 반복은 no-op이며,
+단계 건너뛰기나 역방향 변경은 conflict입니다. 포장·발송 때 재고를 다시 차감하지 않습니다.
+각 전이 timestamp를 저장합니다. 취소·반품·실제 결제·환불은 구현하지 않았습니다.
 
-## Inventory
+## 재고
 
-An adjustment is a nonzero whole-number delta, a reason, and an optional
-operator reference. Each adjustment and checkout stock decrement creates a
-movement record in the same transaction. References are descriptive, not
-currently idempotency keys. Negative adjustments cannot exceed available stock.
+수동 조정은 0이 아닌 정수 delta, 사유, 선택적인 운영자 reference로 구성합니다.
+조정과 Checkout 차감은 같은 transaction 안에서 변동 이력을 남깁니다.
+Reference는 설명용이며 현재 idempotency key가 아닙니다. 재고보다 많이 차감할 수 없습니다.
 
-Low stock means `stockOnHand <= lowStockThreshold`, including zero.
-The initial stock is represented in the movement ledger as opening balances.
+재고 부족은 0을 포함해 `stockOnHand <= lowStockThreshold`인 경우입니다.
+초기 재고도 변동 이력에 opening balance로 기록합니다.
 
-## Operational context
+## 운영 전제
 
-One trusted local operator can switch customer context and fulfill orders.
-There are no authentication, tenant-isolation, or role-based access promises.
-The database belongs to that local installation.
+신뢰된 로컬 운영자 한 명이 고객 context를 전환하고 주문을 처리합니다.
+인증, tenant 격리, 역할별 접근 제어는 보장하지 않습니다. DB는 해당 로컬 설치에 속합니다.
 
-Booked sales in the overview are the sum of accepted order totals, including
-shipping. Category sales use order-line totals after discounts and exclude
-shipping. These are operational totals, not payment settlement or accounting.
-The current overview is all-time and is not a daily/timezone reporting API.
+운영 요약의 주문 매출은 배송비를 포함한 접수 주문 합계입니다. 분류별 매출은
+할인 후 주문 항목 금액을 사용하며 배송비는 제외합니다. 결제 정산이나 회계 수치가 아닌
+운영용 집계입니다. 현재 요약은 전체 기간 기준이며 일별·시간대별 보고 API가 아닙니다.
