@@ -1,6 +1,6 @@
 [
   {
-    "label": "New York spring clock change",
+    "label": "뉴욕 봄 DST 전환",
     "timeZone": "America/New_York",
     "fromDate": "2026-03-08",
     "toDate": "2026-03-09",
@@ -14,7 +14,7 @@
     ]
   },
   {
-    "label": "New York repeated clock hour",
+    "label": "뉴욕 가을 반복 시간대",
     "timeZone": "America/New_York",
     "fromDate": "2026-11-01",
     "toDate": "2026-11-02",
@@ -28,7 +28,7 @@
     ]
   },
   {
-    "label": "Seoul year boundary",
+    "label": "서울 연도 경계",
     "timeZone": "Asia/Seoul",
     "fromDate": "2026-12-31",
     "toDate": "2027-01-02",
@@ -41,7 +41,7 @@
     ]
   },
   {
-    "label": "UTC leap day and month boundary",
+    "label": "UTC 윤일과 월 경계",
     "timeZone": "UTC",
     "fromDate": "2028-02-28",
     "toDate": "2028-03-01",

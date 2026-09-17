@@ -1,75 +1,69 @@
-# Report accepted sales by local calendar date
+# 현지 날짜 기준 일별 주문 매출 보고
 
-## Business request
+## 업무 요청
 
-Give the operator a date-range view of accepted orders in a caller-selected IANA timezone,
-including quiet days and links to the orders behind each amount. Separate merchandise from
-shipping so category activity is not confused with delivery revenue.
+운영자가 선택한 IANA timezone과 날짜 범위로 접수 주문을 볼 수 있게 하세요.
+주문 없는 날도 표시하고 금액의 근거가 되는 주문으로 연결합니다.
+분류별 상품 매출과 배송 매출이 섞이지 않도록 상품 금액과 배송비를 구분하세요.
 
-## Quick start
+## 빠른 시작
 
-Run `MARKETLANE_DB=.data/daily-sales.sqlite npm run dev` from the repository root.
-Do not use main's default database or share this persisted file with another branch.
-Stop the server before switching branches or resetting. Optional reset:
+루트에서 `MARKETLANE_DB=.data/daily-sales.sqlite npm run dev`를 실행합니다.
+main의 기본 DB나 다른 브랜치와 DB를 공유하지 마세요.
+브랜치 전환·초기화 전 서버를 중지합니다. 필요할 때만 초기화하세요:
 `MARKETLANE_DB=.data/daily-sales.sqlite npm run db:reset -- --confirm`
 
-## Observe current behavior
+## 현재 동작 관찰
 
-Inspect the overview cards and open Orders at `http://127.0.0.1:5178`.
+`http://127.0.0.1:5178`에서 운영 요약과 주문 화면을 확인합니다.
 
 ```sh
 curl http://127.0.0.1:4310/api/overview
 curl 'http://127.0.0.1:4310/api/orders?limit=100'
 ```
 
-The overview is all-time: booked sales include shipping, while category sales exclude it.
-Order responses expose createdAt and historical item/totals snapshots; no daily/timezone
-report exists. Inspect actual timestamps rather than assuming seed dates. The order list
-is capped at 100 and is not a complete reporting source for a larger local installation.
-`timestamp-cases.json` supplies boundary inputs for controlled order times, not seed facts.
+운영 요약은 전체 기간 기준입니다. 주문 매출은 배송비를 포함하고 분류 매출은 제외합니다.
+주문 응답에는 createdAt과 과거 항목·합계 snapshot이 있지만 일별·시간대 보고는 없습니다.
+Seed 날짜를 추측하지 말고 실제 timestamp를 확인하세요. 주문 목록은 최대 100건이므로
+데이터가 큰 로컬 설치에서는 완전한 보고 소스가 아닙니다. `timestamp-cases.json`은
+통제된 주문 시각의 경계 입력이지 실제 seed 데이터 설명이 아닙니다.
 
-## Acceptance criteria
+## 수용 기준
 
-1. Publish a report API with real YYYY-MM-DD fromDate inclusive and toDate exclusive,
-   plus a caller-selected IANA timeZone. Membership uses order createdAt interpreted in
-   that timezone, not fulfillment time or the machine's timezone. Return the selected
-   timezone and range so the UI can explain the result.
-2. Return exactly one ordered bucket for every local calendar date in the half-open range,
-   including zero-valued empty days. An order at the start instant is included; one at the
-   end instant is excluded. Honor 23/25-hour DST days, both occurrences of a repeated hour,
-   leap days, and month/year boundaries rather than treating every date as 24 elapsed hours.
-3. All main statuses, placed, packing, and shipped, count as accepted orders. Moving an
-   order through fulfillment never changes its reporting date or accepted sales amount.
-   Do not assume a cancelled status exists or exclude packing/shipped orders.
-4. Each bucket exposes order count, merchandise subtotal, discounts, net merchandise,
-   shipping, and booked total in integer USD cents, plus category units/net merchandise.
-   Net merchandise equals subtotal minus discounts; booked total equals net merchandise
-   plus shipping. Category revenue excludes shipping and reconciles to net merchandise.
-5. Prices, categories, quantities, and discounts come from historical order snapshots,
-   not current catalog joins. Later product/customer edits cannot rewrite past report values
-   or category attribution. Existing WELCOME10 and shipping snapshots remain unchanged.
-6. Multi-line, multi-category orders contribute their order count and shipping exactly once.
-   Joining lines must not multiply order-level totals. Range summaries equal the sum of
-   daily buckets, and every bucket reconciles to its contributing orders without rounding drift.
-7. Accept ranges of 1 through 366 local calendar dates. Reject empty/reversed/oversized
-   ranges, impossible dates, and missing or unrecognized timezone identifiers with structured
-   errors. Numeric UTC offsets are not a substitute for IANA identifiers; document accepted
-   inputs, including UTC. Invalid dates must not normalize silently into another month.
-8. The overview area offers date/timezone selection, daily rows, and drilldown to all contributing
-   orders with their IDs, accepted times, and amounts. Drilldown uses the same date/zone
-   membership and can reconcile to the bucket even beyond 100 orders; the current list cap
-   must not silently truncate reporting. Empty dates remain visible and selectable.
+1. 실제 YYYY-MM-DD 날짜의 fromDate 포함·toDate 제외와 선택한 IANA timeZone을 받는
+   보고 API를 제공합니다. 주문 createdAt을 해당 시간대로 해석해 포함 여부를 정합니다.
+   Fulfillment 시각이나 장치 timezone을 사용하지 않습니다. 선택한 시간대·범위도 응답합니다.
+2. 반열린 범위의 모든 현지 날짜에 정확히 한 개의 정렬된 bucket을 반환하며 주문 없는 날도
+   0으로 포함합니다. 시작 시각의 주문은 포함하고 끝 시각은 제외합니다. 하루를 항상 24시간으로
+   계산하지 말고 23/25시간 DST, 반복 시간대의 두 시각, 윤일, 월·연도 경계를 처리합니다.
+3. main의 placed·packing·shipped를 모두 접수 주문으로 집계합니다. Fulfillment 상태가
+   바뀌어도 보고 날짜나 접수 매출은 바뀌지 않습니다. Cancelled가 있다고 가정하거나
+   packing·shipped를 제외하지 않습니다.
+4. Bucket에는 주문 수와 상품 소계·할인·할인 후 상품 금액·배송비·주문 합계, 분류별 수량·
+   할인 후 상품 금액을 제공합니다. 금액은 정수 USD cents입니다. 할인 후 금액은 소계-할인,
+   주문 합계는 할인 후 금액+배송비이며 분류 매출은 배송비를 제외하고 상품 금액과 일치합니다.
+5. 가격·분류·수량·할인은 현재 catalog join이 아닌 과거 주문 snapshot을 사용합니다.
+   상품·고객 수정이 과거 보고 금액이나 분류 귀속을 바꿀 수 없습니다.
+   기존 WELCOME10·배송비 snapshot을 유지합니다.
+6. 다중 항목·분류 주문도 주문 수와 배송비는 정확히 한 번만 집계합니다.
+   항목 join이 주문 합계를 증폭시키면 안 됩니다. 기간 합계는 일별 bucket의 합과 같고
+   각 bucket은 반올림 오차 없이 근거 주문과 일치해야 합니다.
+7. 현지 날짜 1~366일을 허용합니다. 빈·역순·초과 범위, 불가능한 날짜, 누락·미지원 timezone은
+   구조화된 오류로 거부합니다. 숫자 UTC offset은 IANA 식별자를 대체하지 않습니다.
+   UTC를 포함한 입력을 문서화하고 잘못된 날짜를 다른 달로 조용히 정규화하지 않습니다.
+8. 요약 UI에서 날짜·시간대 선택, 일별 행, 모든 근거 주문의 ID·접수 시각·금액 drilldown을
+   제공합니다. 같은 날짜·시간대 포함 규칙을 쓰고 100건이 넘어도 bucket과 대조할 수 있어야
+   합니다. 목록 한도로 보고를 조용히 자르면 안 됩니다. 빈 날짜도 표시하고 선택할 수 있어야 합니다.
 
-## Boundaries and decisions
+## 범위와 결정
 
-Keep the existing all-time `GET /api/overview` contract working. This is operational booked
-sales, not financial settlement, payment capture, refunds, taxes, or currency conversion.
-Cancellation, reservations, and new promotion rules are not prerequisites. Document report
-and drilldown contracts, limits, and date semantics; no external analytics service is needed.
+기존 전체 기간 `GET /api/overview` 계약을 유지합니다. 운영용 주문 매출이며 정산·실제 결제·
+환불·세금·환율 변환이 아닙니다. 취소·예약·새 프로모션은 전제 조건이 아닙니다.
+보고·drilldown 계약, 한도, 날짜 의미를 문서화합니다. 외부 analytics 서비스는 필요하지 않습니다.
 
-## Code starting points
+## 코드 시작점
 
-- `server/orders/repository.ts`: accepted orders and historical line/total snapshots.
-- `server/db/database.ts` and `server/app.ts`: database access, Clock seam, and reporting routes.
-- `shared/contracts.ts` and `client/`: typed report data, Overview controls, and order links.
-- `test/*.test.ts`: isolated order-time, money, and HTTP boundary coverage locations.
+- `server/orders/repository.ts`: 접수 주문과 과거 항목·합계 snapshot.
+- `server/db/database.ts`, `server/app.ts`: DB, 주입 Clock, 보고 route.
+- `shared/contracts.ts`, `client/`: 보고 타입, 요약 UI, 주문 링크.
+- `test/*.test.ts`: 격리된 주문 시각·금액·HTTP 경계 검증.
