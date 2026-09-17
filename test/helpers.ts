@@ -1,5 +1,5 @@
 import type { TestContext } from "node:test";
-import { createApp } from "../server/app.js";
+import { createApp, type AppOptions } from "../server/app.js";
 import { openDatabase, type Database } from "../server/db/database.js";
 import { seedDatabase } from "../server/db/seed.js";
 
@@ -19,11 +19,11 @@ export function databaseFixture(context: TestContext) {
   return { database, clock };
 }
 
-export async function appFixture(context: TestContext) {
+export async function appFixture(context: TestContext, options: Pick<AppOptions, "dropOrderResponseOnce"> = {}) {
   const database = openDatabase();
   const clock = fixedClock();
   seedDatabase(database, clock);
-  const app = await createApp({ database, clock });
+  const app = await createApp({ ...options, database, clock });
   context.after(async () => {
     try { await app.close(); }
     finally { database.close(); }

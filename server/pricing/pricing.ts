@@ -19,10 +19,10 @@ export function priceCart(
   items: readonly { product: Product; quantity: number }[],
   coupon: Coupon | null,
 ): { items: QuoteLine[]; totals: Totals } {
-  if (!items.length) throw new AppError(400, "EMPTY_CART", "Add at least one product.");
+  if (!items.length) throw new AppError(400, "EMPTY_CART", "상품을 하나 이상 담아 주세요.");
   const subtotalCents = items.reduce((sum, item) => sum + item.product.priceCents * item.quantity, 0);
   if (coupon && subtotalCents < coupon.minSubtotalCents) {
-    throw new AppError(422, "COUPON_MINIMUM", "This cart does not meet the coupon minimum.", {
+    throw new AppError(422, "COUPON_MINIMUM", "쿠폰의 최소 상품 금액 조건을 충족하지 않습니다.", {
       minimumCents: coupon.minSubtotalCents,
     });
   }

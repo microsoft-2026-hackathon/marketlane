@@ -34,7 +34,7 @@ const checkoutSchema = quoteSchema.extend({
 function normalizeQuote(data: z.infer<typeof quoteSchema>): QuoteRequest {
   const unique = new Set(data.items.map(item => item.productId));
   if (unique.size !== data.items.length) {
-    throw new AppError(400, "DUPLICATE_PRODUCT", "Each product may appear only once in a cart.");
+    throw new AppError(400, "DUPLICATE_PRODUCT", "장바구니에 같은 상품을 중복 항목으로 넣을 수 없습니다.");
   }
   const couponCode = data.couponCode?.toUpperCase();
   return {

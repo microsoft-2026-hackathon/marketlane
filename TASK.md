@@ -1,72 +1,66 @@
-# Support category and fixed-amount promotions
+# 분류별·정액 할인 프로모션 지원
 
-## Business request
+## 업무 요청
 
-Add two useful offers while preserving every existing WELCOME10 result:
-DESK15 takes 15% off desk merchandise when its eligible subtotal reaches 5,000 cents;
-TAKE1200 takes up to 1,200 cents off merchandise across categories, with no minimum.
-Make discount allocation understandable in quotes and historical orders.
+기존 WELCOME10 결과를 모두 유지하면서 두 프로모션을 추가하세요.
+DESK15는 대상 desk 상품 소계가 5,000 cents 이상이면 해당 상품을 15% 할인합니다.
+TAKE1200은 최소 금액 없이 모든 분류의 상품에서 최대 1,200 cents를 할인합니다.
+견적과 과거 주문에서 할인 배분을 이해할 수 있어야 합니다.
 
-## Quick start
+## 빠른 시작
 
-Run `MARKETLANE_DB=.data/promotion-rules.sqlite npm run dev` from the repository root.
-Do not use main's default database or share this persisted file with another branch.
-Stop the server before switching branches or resetting. Optional reset:
+루트에서 `MARKETLANE_DB=.data/promotion-rules.sqlite npm run dev`를 실행합니다.
+main의 기본 DB나 다른 브랜치와 DB를 공유하지 마세요.
+브랜치 전환·초기화 전 서버를 중지합니다. 필요할 때만 초기화하세요:
 `MARKETLANE_DB=.data/promotion-rules.sqlite npm run db:reset -- --confirm`
 
-## Observe current behavior
+## 현재 동작 관찰
 
-Open Shop at `http://127.0.0.1:5178` and build a cart from products with sufficient live stock.
+`http://127.0.0.1:5178`에서 재고가 충분한 상품으로 장바구니를 구성하세요.
 
-1. Use the coupon input and `POST /api/quotes?locale=en` with customerId, items, and
-   couponCode. WELCOME10 requires at least 5,000 cents of merchandise before discounts.
-2. Inspect the quote's item discountCents and totals: each current percentage line discount
-   is rounded down, and shipping is 590 cents below 10,000 discounted merchandise cents.
-3. Try DESK15 and TAKE1200 on that stocked cart; they are currently unknown codes.
-   A successful `POST /api/orders` stores line and total snapshots, not a live pricing view.
-   Use current prices and quantities rather than assuming the seed lamp meets a threshold.
+1. 쿠폰 UI와 `POST /api/quotes?locale=en`에 customerId, items, couponCode를 사용합니다.
+   WELCOME10은 할인 전 상품 금액 5,000 cents 이상이 필요합니다.
+2. 항목 discountCents와 totals를 확인합니다. 현재 비율 할인은 항목별 내림이며 할인 후
+   상품 금액 10,000 cents 미만이면 배송비 590 cents입니다.
+3. DESK15·TAKE1200은 현재 미등록 코드입니다. `POST /api/orders` 성공 시 실시간 가격 view가
+   아니라 항목·합계 snapshot을 저장합니다. Seed 램프가 기준 금액에 맞는다고 추측하지 말고
+   현재 가격과 수량을 사용하세요.
 
-## Acceptance criteria
+## 수용 기준
 
-1. WELCOME10 alone remains exactly compatible: trim/case normalization, 5,000-cent
-   pre-discount merchandise minimum, per-line downward rounding at 10%, summed discounts,
-   and shipping outcomes. Preserve explicit unknown, inactive, and below-minimum errors.
-2. DESK15 applies only to desk lines and requires at least 5,000 cents of pre-discount desk
-   merchandise. Carry/paper lines neither qualify it nor receive its discount. Document its
-   whole-cent percentage rounding, including multiple eligible lines and no eligible lines.
-3. TAKE1200 alone discounts min(1,200 cents, merchandise subtotal); it never discounts
-   shipping. Allocate the amount proportionally to eligible line values, with whole-cent
-   shares within one cent of their proportional entitlement. Document a deterministic tie
-   rule that does not depend on request line order; zero-value lines receive no discount.
-4. Choose and document stacking explicitly: either reject multiple codes, or define allowed
-   combinations, application order, threshold bases, and overlapping-line behavior.
-   Keep existing single couponCode requests valid. Never silently discard an extra code
-   or allow stacking accidentally through inconsistent quote and checkout inputs.
-5. Every line and total remains nonnegative and in integer USD cents. Line discounts sum
-   exactly to the order discount, and line totals reconcile to discounted merchandise.
-   Cover minimum supported prices, fixed-offer carts at 1,199/1,200/1,201 cents, tied
-   allocations, mixed categories, and quantities near existing cart limits.
-6. Cover qualification at 4,999/5,000 cents and discounted merchandise at 9,999/10,000.
-   Shipping stays 590/0 cents at the latter boundary, including when a promotion changes
-   eligibility. A fully discounted nonempty cart still follows the existing shipping rule.
-7. Quotes and checkout use the same promotion behavior, while checkout still reads live
-   prices and stock. Changing line order cannot change per-product allocation or totals.
-   Unsupported or ineligible combinations produce the existing structured error envelope.
-8. UI shows the applied offer(s), eligibility failures, and reconciled totals. New orders
-   retain enough snapshot information to explain their discounts; changing product data
-   or promotion definitions never reprices accepted orders, including older WELCOME10 orders.
+1. WELCOME10 단독 사용의 trim·대소문자 정규화, 할인 전 최소 5,000 cents, 항목별 10% 내림,
+   할인액 합산, 배송비 결과를 정확히 유지합니다. 미등록·비활성·최소 금액 미달 오류도 유지합니다.
+2. DESK15는 할인 전 desk 상품 금액 5,000 cents 이상에서 desk 항목에만 적용합니다.
+   Carry·paper는 자격 금액에도 할인 대상에도 포함하지 않습니다. 여러 대상 항목과 대상 없는
+   경우를 포함해 정수 cents 비율 할인 반올림 정책을 문서화합니다.
+3. TAKE1200 단독 할인은 min(1,200 cents, 상품 소계)이며 배송비에는 적용하지 않습니다.
+   대상 항목 금액에 비례해 정수 cents로 배분하고 각 몫의 비례 배분 오차는 1 cent 이내로 합니다.
+   요청 항목 순서에 의존하지 않는 결정적 동률 규칙을 문서화합니다. 금액 0인 항목은 할인하지 않습니다.
+4. Stacking 정책을 명시합니다. 복수 코드를 거부하거나 허용 조합·적용 순서·기준 금액·중복
+   대상 항목의 동작을 정의하세요. 기존 단일 couponCode 요청은 유지합니다. 추가 코드를 조용히
+   버리거나 견적·Checkout 입력 불일치로 우연히 중복 적용하면 안 됩니다.
+5. 모든 항목·합계는 음수가 아닌 정수 USD cents입니다. 항목 할인액 합은 주문 할인액과 정확히
+   같고 항목 합계는 할인 후 상품 금액과 일치해야 합니다. 최소 지원 가격, 정액 할인 대상
+   1,199/1,200/1,201 cents, 배분 동률, 혼합 분류, 장바구니 수량 한계 근처를 검증합니다.
+6. 자격 경계 4,999/5,000 cents와 할인 후 9,999/10,000 cents를 검증합니다.
+   프로모션이 무료 배송 자격을 바꿔도 배송비는 후자의 경계에서 590/0 cents를 유지합니다.
+   전액 할인된 비어 있지 않은 장바구니에도 기존 배송비 규칙을 적용합니다.
+7. 견적·Checkout은 같은 프로모션 규칙을 사용하고 Checkout은 현재 가격·재고를 다시 읽습니다.
+   항목 순서가 달라도 상품별 배분·합계가 같아야 합니다. 미지원·자격 미달 조합은 기존 오류 형식을 사용합니다.
+8. UI에 적용 프로모션, 자격 오류, 맞춰진 합계를 표시합니다. 새 주문은 할인 이유를 설명할
+   충분한 snapshot을 저장합니다. 상품·프로모션 정의가 바뀌어도 과거 WELCOME10 주문을 포함한
+   접수 주문의 가격을 다시 계산하지 않습니다.
 
-## Boundaries and decisions
+## 범위와 결정
 
-USD only, with no taxes, currency conversion, payment processor, or promotion scheduling.
-A promotion-management console is not required. This work uses existing ordinary checkout,
-not reservations or cancellation. Document the chosen stacking and rounding policies in
-the pricing rules and API contracts; allocation implementation remains a design decision.
+USD만 사용하며 세금·환율 변환·payment processor·프로모션 예약 실행은 없습니다.
+프로모션 관리 콘솔도 필수가 아닙니다. 기존 일반 Checkout을 사용하며 예약·취소에 의존하지
+않습니다. Stacking·반올림 정책을 가격 규칙과 API 문서에 기록하고 배분 구현은 설계 판단으로 남깁니다.
 
-## Code starting points
+## 코드 시작점
 
-- `server/pricing/pricing.ts`: existing percentage, threshold, and shipping behavior.
-- `shared/contracts.ts` and `server/app.ts`: coupon input and quote response representation.
-- `server/orders/service.ts` and `server/orders/repository.ts`: accepted order snapshots.
-- `server/db/migrations.ts`: compatibility for persisted promotion information.
-- `client/` and `test/*.test.ts`: coupon controls, line totals, and integer-price coverage.
+- `server/pricing/pricing.ts`: 기존 비율·기준 금액·배송비 규칙.
+- `shared/contracts.ts`, `server/app.ts`: 쿠폰 입력과 견적 응답.
+- `server/orders/service.ts`, `server/orders/repository.ts`: 접수 주문 snapshot.
+- `server/db/migrations.ts`: 영속 프로모션 정보의 호환성.
+- `client/`, `test/*.test.ts`: 쿠폰 UI, 항목 합계, 정수 가격 검증.

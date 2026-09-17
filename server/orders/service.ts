@@ -17,7 +17,7 @@ function calculate(
   const items = request.items.map(item => {
     const product = getProduct(database, item.productId, locale);
     if (product.stockOnHand < item.quantity) {
-      throw new AppError(409, "INSUFFICIENT_STOCK", "There is not enough stock for this product.", {
+      throw new AppError(409, "INSUFFICIENT_STOCK", "상품 재고가 부족합니다.", {
         sku: product.sku, available: product.stockOnHand, requested: item.quantity,
       });
     }
@@ -64,7 +64,7 @@ export function changeOrderStatus(database: Database, id: string, input: unknown
     const allowed = (order.status === "placed" && status === "packing") ||
       (order.status === "packing" && status === "shipped");
     if (!allowed) {
-      throw new AppError(409, "INVALID_ORDER_TRANSITION", "This fulfillment transition is not allowed.", {
+      throw new AppError(409, "INVALID_ORDER_TRANSITION", "허용되지 않는 주문 상태 변경입니다.", {
         current: order.status, requested: status,
       });
     }
