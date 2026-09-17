@@ -44,7 +44,7 @@ function reducer(state: Drafts, action: Action): Drafts {
           dirty: false,
           notice: action.error ? {
             kind: "unsaved",
-            message: `Your draft changed in this tab, but browser storage could not be updated. An older draft may return after reloading. ${action.error}`,
+            message: `이 탭의 장바구니는 바뀌었지만 브라우저에 저장하지 못했습니다. 새로고침하면 이전 내용이 나타날 수 있습니다. ${action.error}`,
           } : null,
         },
       };
@@ -59,7 +59,7 @@ function reducer(state: Drafts, action: Action): Drafts {
           version: (current?.version ?? 0) + 1,
           notice: action.temporary ? {
             kind: "temporary",
-            message: "This is a temporary cart, kept only in this tab. A previously saved draft may still exist and return after reloading.",
+            message: "이 탭에만 보관되는 임시 장바구니입니다. 새로고침하면 이전에 저장된 장바구니가 나타날 수 있습니다.",
           } : null,
         },
       };
@@ -76,7 +76,7 @@ function reducer(state: Drafts, action: Action): Drafts {
 }
 
 function storageError(error: unknown): string {
-  return error instanceof Error ? error.message : "The browser did not provide an error description.";
+  return error instanceof Error ? error.message : "브라우저에서 오류 설명을 제공하지 않았습니다.";
 }
 
 export function useDraftCarts(customerId: string) {
@@ -95,7 +95,7 @@ export function useDraftCarts(customerId: string) {
         version: 0,
         notice: restored.ok ? null : {
           kind: "corrupt",
-          message: `${restored.message} Nothing has been overwritten. Reset this customer's saved draft to start again.`,
+          message: `${restored.message} 기존 데이터는 덮어쓰지 않았습니다. 이 고객의 장바구니를 초기화하면 다시 시작할 수 있습니다.`,
         },
       };
     } catch (error) {
@@ -107,7 +107,7 @@ export function useDraftCarts(customerId: string) {
         version: 0,
         notice: {
           kind: "unavailable",
-          message: `This customer's saved cart could not be opened. Retry, or explicitly start a temporary cart. ${storageError(error)}`,
+          message: `저장된 장바구니를 열지 못했습니다. 다시 불러오거나 임시 장바구니를 선택해 주세요. ${storageError(error)}`,
         },
       };
     }
@@ -135,8 +135,8 @@ export function useDraftCarts(customerId: string) {
     loading: Boolean(customerId) && active === undefined,
     notice: active?.notice ?? null,
     replace: (id: string, items: CartLine[]) => {
-      if (!drafts[id]?.ready) throw new Error("Recover this customer's saved cart before making changes.");
-      if (!validateCartLines(items)) throw new Error("The draft contains invalid items or quantities.");
+      if (!drafts[id]?.ready) throw new Error("저장된 장바구니를 복구한 뒤 변경해 주세요.");
+      if (!validateCartLines(items)) throw new Error("장바구니의 상품이나 수량이 올바르지 않습니다.");
       dispatch({ type: "change", customerId: id, items });
     },
     reset: () => dispatch({ type: "recover", customerId, temporary: false }),

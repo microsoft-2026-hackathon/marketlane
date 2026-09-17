@@ -3,31 +3,31 @@ export const MAX_PRODUCT_PRICE_CENTS = 10_000_000;
 export const MAX_STOCK_ADJUSTMENT = 10_000;
 
 export function formatMoney(cents: number): string {
-  if (!Number.isSafeInteger(cents)) throw new Error("Money must be a whole number of cents.");
+  if (!Number.isSafeInteger(cents)) throw new Error("금액은 정수 cents여야 합니다.");
   return usd.format(cents / 100);
 }
 
 export function parsePriceCents(input: string): number {
   const value = input.trim();
   if (!/^\d+(?:\.\d{1,2})?$/.test(value)) {
-    throw new Error("Enter a USD price with up to two decimal places, such as 24.50.");
+    throw new Error("USD 가격을 소수점 둘째 자리까지 입력해 주세요. 예: 24.50");
   }
   const [dollars = "", fraction = ""] = value.split(".");
   const cents = Number(dollars) * 100 + Number(fraction.padEnd(2, "0"));
   if (!Number.isSafeInteger(cents) || cents < 1 || cents > MAX_PRODUCT_PRICE_CENTS) {
-    throw new Error("Enter a price from $0.01 through $100,000.00.");
+    throw new Error("$0.01~$100,000.00 사이의 가격을 입력해 주세요.");
   }
   return cents;
 }
 
 export function priceInputValue(cents: number): string {
-  if (!Number.isSafeInteger(cents) || cents < 0) throw new Error("Invalid price.");
+  if (!Number.isSafeInteger(cents) || cents < 0) throw new Error("가격이 올바르지 않습니다.");
   return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, "0")}`;
 }
 
 export function parseStockDelta(input: string): number {
   const delta = stockDeltaFromInput(input);
-  if (delta === null) throw new Error("Enter a nonzero whole number from -10,000 to 10,000, such as +12 or -3.");
+  if (delta === null) throw new Error("-10,000~10,000 사이에서 0이 아닌 정수를 입력해 주세요. 예: +12 또는 -3");
   return delta;
 }
 

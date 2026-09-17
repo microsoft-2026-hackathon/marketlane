@@ -77,7 +77,7 @@ export function Cart({
     event.preventDefault();
     const code = couponInput.trim().toUpperCase();
     if (!code) {
-      setCouponError("Enter a coupon code, or remove the current code.");
+      setCouponError("쿠폰 코드를 입력하거나 현재 코드를 삭제해 주세요.");
       return;
     }
     setCouponError(null);
@@ -90,16 +90,16 @@ export function Cart({
 
   return <div className="cart-view">
     <div className="page-heading">
-      <div><p className="eyebrow">A FEW GOOD THINGS</p><h1>Your cart<span className="heading-count">{itemCount(items)}</span></h1>
-        <p>A little more considered. A little more you.</p></div>
-      <button className="button button-secondary" onClick={onShop} disabled={busy}>Keep browsing <Icon name="arrow" size={17} /></button>
+      <div><p className="eyebrow">고른 물건들</p><h1>장바구니<span className="heading-count">{itemCount(items)}</span></h1>
+        <p>일상에 필요한 물건을 한곳에 모았습니다.</p></div>
+      <button className="button button-secondary" onClick={onShop} disabled={busy}>계속 둘러보기 <Icon name="arrow" size={17} /></button>
     </div>
 
     <div className="cart-customer panel">
-      <div><span className="eyebrow">SHOPPING FOR</span><p>{customer ? `${customer.company} / ${customer.email}` : "Choose the customer who will receive this order."}</p></div>
-      <label className="field"><span className="sr-only">Cart customer</span>
+      <div><span className="eyebrow">주문 고객</span><p>{customer ? `${customer.company} / ${customer.email}` : "주문할 고객을 선택해 주세요."}</p></div>
+      <label className="field"><span className="sr-only">장바구니 고객</span>
         <select value={customer?.id ?? ""} onChange={(event) => onCustomerChange(event.target.value)} disabled={busy || customers.length === 0}>
-          {!customer && <option value="">Select a customer</option>}
+          {!customer && <option value="">고객 선택</option>}
           {customers.map((entry) => <option value={entry.id} key={entry.id}>{entry.name}</option>)}
         </select>
       </label>
@@ -107,35 +107,35 @@ export function Cart({
 
     {confirmation && confirmation.customer.id === customer?.id && <section className="order-confirmation" aria-labelledby="confirmation-title" role="status">
       <span className="confirmation-icon"><Icon name="check" size={34} /></span>
-      <p className="eyebrow">ORDER {confirmation.number}</p>
-      <h2 id="confirmation-title">Good things are on the way.</h2>
-      <p>Your order for <strong>{confirmation.customer.name}</strong> has been recorded and is ready for fulfillment.</p>
+      <p className="eyebrow">주문 {confirmation.number}</p>
+      <h2 id="confirmation-title">주문이 접수되었습니다.</h2>
+      <p><strong>{confirmation.customer.name}</strong>의 주문을 기록했습니다. 이제 포장을 진행할 수 있습니다.</p>
       <div className="confirmation-facts">
-        <span>{itemCount(confirmation.items)} items</span><span>{formatMoney(confirmation.totals.totalCents)} USD</span><span><Timestamp value={confirmation.createdAt} withTime /></span>
+        <span>총 {itemCount(confirmation.items)}개</span><span>{formatMoney(confirmation.totals.totalCents)} USD</span><span><Timestamp value={confirmation.createdAt} withTime /></span>
       </div>
-      <p className="small muted">No payment was collected. Follow the order from placed to shipped in Orders.</p>
+      <p className="small muted">실제 결제는 진행하지 않았습니다. 주문 화면에서 접수부터 발송까지 확인할 수 있습니다.</p>
       <div className="button-row">
-        <button className="button button-primary" onClick={() => onViewOrder(confirmation.id)}>View order <Icon name="arrow" size={17} /></button>
-        <button className="button button-secondary" onClick={onShop}>Back to the collection</button>
+        <button className="button button-primary" onClick={() => onViewOrder(confirmation.id)}>주문 보기 <Icon name="arrow" size={17} /></button>
+        <button className="button button-secondary" onClick={onShop}>상품 목록으로</button>
       </div>
     </section>}
 
-    {loading && <Loading label="Restoring this customer's draft..." />}
-    {!loading && !ready && <EmptyState icon="cart" title={customer ? "Your saved draft needs attention" : "Choose a customer to begin"}>
-      {customer ? "Use the saved-cart notice above to recover this customer's cart. Other customers' drafts will not be changed." : "Each customer has a separate browser draft. Select an account to open its cart."}
+    {loading && <Loading label="고객의 장바구니를 복원하는 중..." />}
+    {!loading && !ready && <EmptyState icon="cart" title={customer ? "저장된 장바구니를 확인해 주세요" : "고객을 선택해 주세요"}>
+      {customer ? "위 알림에서 이 고객의 장바구니를 복구해 주세요. 다른 고객의 장바구니는 바뀌지 않습니다." : "고객마다 브라우저에 별도 장바구니가 저장됩니다. 고객을 선택해 주세요."}
     </EmptyState>}
-    {ready && items.length === 0 && !confirmation && <EmptyState icon="cart" title="Room for something useful"
-      action={<button className="button button-primary" onClick={onShop}>Explore the collection <Icon name="arrow" size={17} /></button>}>
-      Your cart is empty. Find a few thoughtful essentials for your working day.
+    {ready && items.length === 0 && !confirmation && <EmptyState icon="cart" title="장바구니가 비어 있습니다"
+      action={<button className="button button-primary" onClick={onShop}>상품 둘러보기 <Icon name="arrow" size={17} /></button>}>
+      일하는 하루에 필요한 물건을 골라 보세요.
     </EmptyState>}
 
     {ready && items.length > 0 && <div className="cart-layout">
       <div className="cart-main">
-        <Notice title="A draft, not a reservation">Items remain available to other orders until checkout. Current prices and stock are checked again when you place your order.</Notice>
-        {inventory.error !== null && <ErrorState title="Product labels and stock could not be loaded" error={inventory.error} onRetry={inventory.reload} />}
-        {inventory.loading && <div className="inline-loading" role="status"><span className="spinner" />Loading product details and current stock...</div>}
-        <section className="cart-items panel" aria-label="Draft cart items">
-          <div className="cart-items-heading"><h2>Your essentials</h2><span>{items.length} {items.length === 1 ? "product" : "products"}</span></div>
+        <Notice title="장바구니는 재고 예약이 아닙니다">주문 전까지 다른 고객도 구매할 수 있습니다. 주문 시점에 가격과 재고를 다시 확인합니다.</Notice>
+        {inventory.error !== null && <ErrorState title="상품 정보와 재고를 불러오지 못했습니다" error={inventory.error} onRetry={inventory.reload} />}
+        {inventory.loading && <div className="inline-loading" role="status"><span className="spinner" />상품 정보와 현재 재고를 불러오는 중...</div>}
+        <section className="cart-items panel" aria-label="장바구니 상품">
+          <div className="cart-items-heading"><h2>담은 상품</h2><span>{items.length}종</span></div>
           {items.map((item) => {
             const product = products.get(item.productId);
             const line = quotedLines.get(item.productId);
@@ -144,95 +144,95 @@ export function Cart({
             const inputId = `quantity-${encodeURIComponent(item.productId)}`;
             return <article className="cart-item" key={item.productId}>
               <button className="cart-item-image" onClick={() => onDetails(item.productId)} disabled={busy}
-                aria-label={`View ${name}`}>
+                aria-label={`${name} 상세 보기`}>
                 {product ? <ProductArt shape={product.shape} tone={product.tone} /> : <Icon name="inventory" size={30} />}
               </button>
               <div className="cart-item-content">
-                <span className="product-category">{product?.sku ?? line?.sku ?? "PRODUCT DETAILS UNAVAILABLE"}</span>
+                <span className="product-category">{product?.sku ?? line?.sku ?? "상품 정보 없음"}</span>
                 <h3><button className="product-name-button" onClick={() => onDetails(item.productId)} disabled={busy}
                   lang={product?.contentLocale}>{name}</button></h3>
-                {product && <div className="cart-item-stock"><span>{product.stockOnHand} available &middot; Not reserved</span><LanguageBadge product={product} /></div>}
-                {!product && inventory.data && <p className="field-error">This product is not in the current inventory. Remove it to continue.</p>}
+                {product && <div className="cart-item-stock"><span>재고 {product.stockOnHand}개 &middot; 예약되지 않음</span><LanguageBadge product={product} /></div>}
+                {!product && inventory.data && <p className="field-error">현재 재고에 없는 상품입니다. 삭제한 뒤 진행해 주세요.</p>}
                 <div className="cart-quantity-row">
                   <div className={`quantity-control ${invalid ? "quantity-invalid" : ""}`}>
                     <button className="quantity-button" disabled={busy || item.quantity <= 1}
-                      aria-label={`Decrease quantity of ${name}`} onClick={() => updateQuantity(item.productId, String(item.quantity - 1))}><Icon name="minus" size={14} /></button>
-                    <label className="sr-only" htmlFor={inputId}>Quantity for {name}</label>
+                      aria-label={`${name} 수량 줄이기`} onClick={() => updateQuantity(item.productId, String(item.quantity - 1))}><Icon name="minus" size={14} /></button>
+                    <label className="sr-only" htmlFor={inputId}>{name} 수량</label>
                     <input id={inputId} inputMode="numeric" value={invalidInputs.get(item.productId) ?? String(item.quantity)}
                       onChange={(event) => updateQuantity(item.productId, event.target.value)} disabled={busy}
                       aria-invalid={invalid} aria-describedby={invalid ? `${inputId}-error` : undefined} />
                     <button className="quantity-button" disabled={busy || item.quantity >= MAX_QUANTITY}
-                      aria-label={`Increase quantity of ${name}`} onClick={() => updateQuantity(item.productId, String(item.quantity + 1))}><Icon name="plus" size={14} /></button>
+                      aria-label={`${name} 수량 늘리기`} onClick={() => updateQuantity(item.productId, String(item.quantity + 1))}><Icon name="plus" size={14} /></button>
                   </div>
                   <button className="text-button remove-button" disabled={busy} onClick={() => { clearInput(item.productId); onRemove(item.productId); }}
-                    aria-label={`Remove ${name} from cart`}><Icon name="trash" size={15} />Remove</button>
+                    aria-label={`${name} 장바구니에서 삭제`}><Icon name="trash" size={15} />삭제</button>
                 </div>
-                {invalid && <p className="field-error" id={`${inputId}-error`}>Use a whole quantity from 1 to {MAX_QUANTITY}. This edit has not been applied.</p>}
+                {invalid && <p className="field-error" id={`${inputId}-error`}>1~{MAX_QUANTITY} 사이의 정수를 입력해 주세요. 아직 반영되지 않았습니다.</p>}
               </div>
               <div className="cart-item-price">
-                {line ? <><strong>{formatMoney(line.lineTotalCents)}</strong><span>{formatMoney(line.unitPriceCents)} each</span>
-                  {line.discountCents > 0 && <small>Saved {formatMoney(line.discountCents)}</small>}</>
-                  : <span className="muted">{quote.loading ? "Quoting..." : "Awaiting quote"}</span>}
+                {line ? <><strong>{formatMoney(line.lineTotalCents)}</strong><span>개당 {formatMoney(line.unitPriceCents)}</span>
+                  {line.discountCents > 0 && <small>{formatMoney(line.discountCents)} 할인</small>}</>
+                  : <span className="muted">{quote.loading ? "계산 중..." : "견적 대기 중"}</span>}
               </div>
             </article>;
           })}
         </section>
 
         <section className="panel order-note-panel">
-          <label className="field">Order note <span className="muted">(optional)</span>
+          <label className="field">주문 메모 <span className="muted">(선택)</span>
             <textarea rows={3} maxLength={500} value={note} onChange={(event) => onNoteChange(event.target.value)}
-              placeholder="Anything the fulfillment team should know?" disabled={busy} />
-            <span className="field-hint">Included in the order snapshot. Notes and coupons are kept only in this tab.</span>
+              placeholder="주문 처리 시 참고할 내용을 적어 주세요." disabled={busy} />
+            <span className="field-hint">주문 snapshot에 포함됩니다. 제출 전 메모와 쿠폰은 이 탭에만 보관됩니다.</span>
           </label>
         </section>
       </div>
 
       <aside className="cart-summary" aria-labelledby="summary-title">
         <div className="panel quote-panel">
-          <div className="quote-heading"><h2 id="summary-title">Order summary</h2><span className="currency-label">USD</span></div>
+          <div className="quote-heading"><h2 id="summary-title">주문 요약</h2><span className="currency-label">USD</span></div>
           <form className="coupon-form" onSubmit={applyCoupon}>
-            <label className="field" htmlFor="coupon-code">Have a coupon?</label>
+            <label className="field" htmlFor="coupon-code">쿠폰 코드</label>
             <div className="coupon-input-row"><input id="coupon-code" value={couponInput}
               onChange={(event) => { setCouponInput(event.target.value); setCouponError(null); }}
-              placeholder="Enter code" autoCapitalize="characters" autoComplete="off" maxLength={40} disabled={busy} />
-              <button className="button button-secondary" disabled={busy || !couponInput.trim()}>Apply</button></div>
+              placeholder="코드 입력" autoCapitalize="characters" autoComplete="off" maxLength={40} disabled={busy} />
+              <button className="button button-secondary" disabled={busy || !couponInput.trim()}>적용</button></div>
             {couponError && <p className="field-error" role="alert">{couponError}</p>}
           </form>
           {couponCode && <div className="coupon-chip"><Icon name="tag" size={16} /><strong>{couponCode}</strong>
-            <span>{quote.data?.coupon ? "Applied" : quote.error !== null ? "Not applied" : "Checking..."}</span>
-            <button className="icon-button" aria-label="Remove coupon" disabled={busy}
+            <span>{quote.data?.coupon ? "적용됨" : quote.error !== null ? "적용 안 됨" : "확인 중..."}</span>
+            <button className="icon-button" aria-label="쿠폰 삭제" disabled={busy}
               onClick={() => { setCouponInput(""); setCouponError(null); onCouponChange(""); }}><Icon name="close" size={15} /></button>
           </div>}
-          <p className="coupon-tip">WELCOME10 takes 10% off merchandise of $50 or more.</p>
+          <p className="coupon-tip">WELCOME10: 상품 금액 $50 이상이면 10% 할인.</p>
 
-          {quote.loading && !hasInvalidQuantities && <div className="quote-loading" role="status"><span className="spinner" />Calculating current prices...</div>}
-          {quote.error !== null && <Notice tone="error" title="Your draft needs a fresh quote">{errorMessage(quote.error)} Your items have been kept so you can make changes.</Notice>}
+          {quote.loading && !hasInvalidQuantities && <div className="quote-loading" role="status"><span className="spinner" />현재 가격 계산 중...</div>}
+          {quote.error !== null && <Notice tone="error" title="견적을 다시 확인해 주세요">{errorMessage(quote.error)} 수정할 수 있도록 담은 상품은 보관했습니다.</Notice>}
           {currentQuote && <TotalsBreakdown totals={currentQuote.totals} couponCode={currentQuote.coupon?.code ?? null} />}
-          {hasInvalidQuantities && <p className="unquoted-total">Correct the quantity fields to see the total for your draft.</p>}
-          {!quote.loading && !quote.data && !hasInvalidQuantities && <p className="unquoted-total">Total unavailable until every item and the coupon can be quoted.</p>}
-          {currentQuote && <p className="quote-timestamp"><Icon name="clock" size={14} />Quoted <Timestamp value={currentQuote.quotedAt} withTime /></p>}
+          {hasInvalidQuantities && <p className="unquoted-total">수량을 수정하면 합계를 확인할 수 있습니다.</p>}
+          {!quote.loading && !quote.data && !hasInvalidQuantities && <p className="unquoted-total">모든 상품과 쿠폰의 견적을 계산해야 합계가 표시됩니다.</p>}
+          {currentQuote && <p className="quote-timestamp"><Icon name="clock" size={14} />견적 시각 <Timestamp value={currentQuote.quotedAt} withTime /></p>}
           <button className="text-button refresh-quote" onClick={quote.reload} disabled={busy || quote.loading || hasInvalidQuantities}>
-            <Icon name="refresh" size={15} />Refresh quote
+            <Icon name="refresh" size={15} />견적 새로고침
           </button>
 
           {problem && <Notice tone={problem.uncertain ? "warning" : "error"}
-            title={problem.uncertain ? "We could not confirm your order" : "Order was not placed"}
+            title={problem.uncertain ? "주문 접수 여부를 확인하지 못했습니다" : "주문이 접수되지 않았습니다"}
             actions={<>
-              <button className="button button-small button-secondary" onClick={onViewOrders} disabled={busy}>Review this customer's orders</button>
+              <button className="button button-small button-secondary" onClick={onViewOrders} disabled={busy}>이 고객의 주문 확인</button>
               {problem.uncertain && <button className="text-button" onClick={onAcknowledgeUncertainty} disabled={busy}>
-                I checked Orders; allow a new submission
+                주문 확인 완료, 새 주문 허용
               </button>}
             </>}>{problem.message}</Notice>}
 
           <button className="button button-primary checkout-button" disabled={!canCheckout} onClick={onCheckout}>
-            {checkingOut ? <><span className="spinner" />Placing your order...</> : <><Icon name="cart" size={18} />Place order{currentQuote ? ` - ${formatMoney(currentQuote.totals.totalCents)}` : ""}</>}
+            {checkingOut ? <><span className="spinner" />주문 접수 중...</> : <><Icon name="cart" size={18} />주문하기{currentQuote ? ` - ${formatMoney(currentQuote.totals.totalCents)}` : ""}</>}
           </button>
-          {hasInvalidQuantities && <p className="field-error">Correct the quantity fields before placing an order.</p>}
+          {hasInvalidQuantities && <p className="field-error">수량을 수정한 뒤 주문해 주세요.</p>}
           <p className="checkout-disclaimer">{checkingOut
-            ? "Please keep this page open. Customer and cart changes are paused while your order is submitted."
-            : "Checkout records an order; it does not charge a card. No tax or currency conversion is applied."}</p>
+            ? "페이지를 닫지 마세요. 주문 전송 중에는 고객과 장바구니를 변경할 수 없습니다."
+            : "주문만 기록하며 실제 결제는 하지 않습니다. 세금이나 환율 변환은 적용하지 않습니다."}</p>
         </div>
-        <p className="cart-persistence-note"><Icon name="info" size={16} />Only item IDs and quantities are saved to this customer's browser draft.</p>
+        <p className="cart-persistence-note"><Icon name="info" size={16} />고객별 브라우저 장바구니에는 상품 ID와 수량만 저장됩니다.</p>
       </aside>
     </div>}
   </div>;

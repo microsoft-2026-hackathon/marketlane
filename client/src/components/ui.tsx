@@ -5,7 +5,7 @@ import { formatMoney } from "../lib/money.js";
 import { Icon, type IconName } from "./icon.js";
 
 export const categoryLabels: Record<Category, string> = { desk: "Desk", carry: "Carry", paper: "Paper" };
-export const statusLabels: Record<OrderStatus, string> = { placed: "Placed", packing: "Packing", shipped: "Shipped" };
+export const statusLabels: Record<OrderStatus, string> = { placed: "주문 접수", packing: "포장 중", shipped: "발송 완료" };
 
 export function Notice({ children, title, tone = "info", actions }: {
   children: ReactNode;
@@ -25,17 +25,17 @@ export function Notice({ children, title, tone = "info", actions }: {
   );
 }
 
-export function Loading({ label = "Loading..." }: { label?: string }) {
+export function Loading({ label = "불러오는 중..." }: { label?: string }) {
   return <div className="loading-state" role="status"><span className="spinner" aria-hidden="true" />{label}</div>;
 }
 
-export function ErrorState({ error, onRetry, title = "Something needs attention" }: {
+export function ErrorState({ error, onRetry, title = "확인이 필요합니다" }: {
   error: unknown;
   onRetry: () => void;
   title?: string;
 }) {
   return <Notice tone="error" title={title} actions={
-    <button className="button button-small button-secondary" onClick={onRetry}><Icon name="refresh" size={16} />Try again</button>
+    <button className="button button-small button-secondary" onClick={onRetry}><Icon name="refresh" size={16} />다시 시도</button>
   }>{errorMessage(error)}</Notice>;
 }
 
@@ -54,16 +54,16 @@ export function EmptyState({ icon = "inventory", title, children, action }: {
 }
 
 export function StockBadge({ product }: { product: Product }) {
-  if (product.stockOnHand === 0) return <span className="stock-badge stock-out"><span />Out of stock</span>;
+  if (product.stockOnHand === 0) return <span className="stock-badge stock-out"><span />품절</span>;
   if (product.stockOnHand <= product.lowStockThreshold) {
-    return <span className="stock-badge stock-low"><span />{product.stockOnHand} left</span>;
+    return <span className="stock-badge stock-low"><span />{product.stockOnHand}개 남음</span>;
   }
-  return <span className="stock-badge"><span />In stock</span>;
+  return <span className="stock-badge"><span />재고 있음</span>;
 }
 
 export function LanguageBadge({ product }: { product: Product }) {
   return product.locale !== product.contentLocale
-    ? <span className="language-badge" title="A Korean translation is not available. This product is shown in English.">English fallback</span>
+    ? <span className="language-badge" title="한국어 번역이 없어 영어로 표시합니다.">English fallback</span>
     : null;
 }
 
@@ -71,8 +71,8 @@ export function StatusBadge({ status }: { status: OrderStatus }) {
   return <span className={`status-badge status-${status}`}><span />{statusLabels[status]}</span>;
 }
 
-const dateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
-const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+const dateFormatter = new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric", year: "numeric" });
+const dateTimeFormatter = new Intl.DateTimeFormat("ko-KR", {
   month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
 });
 
@@ -85,13 +85,13 @@ export function Timestamp({ value, withTime = false }: { value: string; withTime
 
 export function TotalsBreakdown({ totals, couponCode }: { totals: Totals; couponCode?: string | null }) {
   return <dl className="totals">
-    <div><dt>Merchandise</dt><dd>{formatMoney(totals.subtotalCents)}</dd></div>
+    <div><dt>상품 금액</dt><dd>{formatMoney(totals.subtotalCents)}</dd></div>
     {totals.discountCents > 0 && <div className="total-discount">
-      <dt>Discount{couponCode && <small>{couponCode}</small>}</dt>
+      <dt>할인{couponCode && <small>{couponCode}</small>}</dt>
       <dd>-{formatMoney(totals.discountCents)}</dd>
     </div>}
-    <div><dt>Shipping</dt><dd>{totals.shippingCents === 0 ? "Free" : formatMoney(totals.shippingCents)}</dd></div>
-    <div className="total-final"><dt>Total <span>USD</span></dt><dd>{formatMoney(totals.totalCents)}</dd></div>
+    <div><dt>배송비</dt><dd>{totals.shippingCents === 0 ? "무료" : formatMoney(totals.shippingCents)}</dd></div>
+    <div className="total-final"><dt>합계 <span>USD</span></dt><dd>{formatMoney(totals.totalCents)}</dd></div>
   </dl>;
 }
 
@@ -122,7 +122,7 @@ export function Modal({ title, eyebrow, children, onClose, busy = false, wide = 
       aria-busy={busy} onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>
       <div className="modal-heading">
         <div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h2 id={titleId}>{title}</h2></div>
-        <button className="icon-button" onClick={onClose} disabled={busy} aria-label="Close dialog"><Icon name="close" /></button>
+        <button className="icon-button" onClick={onClose} disabled={busy} aria-label="대화상자 닫기"><Icon name="close" /></button>
       </div>
       <div className="modal-body">{children}</div>
     </dialog>
