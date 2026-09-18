@@ -11,9 +11,11 @@
 
 **[태스크 정의와 Pair 시작 질문](TASK.md)** 에서 여덟 과제를 선택할 수 있습니다.
 `main`에 안내와 `tasks/<태스크>/TASK.md`가 있으므로 브랜치 전환 없이 읽을 수 있습니다.
-첫 실습은 Catalog 반복 조회 개선(`catalog-cache`)을 추천합니다. 선택한 과제 문서를
-Pair에 첨부하고 문서의 **Pair 시작 질문**으로 대화를 시작하세요.
-과제 문서는 요구사항이며, 해당 기능이 이미 구현되어 있다는 뜻은 아닙니다.
+첫 실습은 Catalog 반복 조회 개선(`catalog-cache`)을 추천합니다. **Pair 시작 질문**만
+사용하고 완료 기준을 첨부하거나 해당 문서를 읽도록 유도하지 않습니다. Driver 지시는
+사용자가 직접 작성합니다. Agent가 문서를 직접 찾는 것은 막지 않습니다.
+과제의 기능적 완료 기준은 사용자·관찰자 참고용이며 구현 방법을 지정하지 않습니다.
+해당 기능이 이미 구현되어 있다는 뜻도 아닙니다.
 
 ## 로컬 실행
 
@@ -79,16 +81,16 @@ Checkout은 하나의 transaction에서 현재 가격과 재고를 읽습니다.
 
 ## 코드 구조
 
-| 경로 | 역할 |
-| --- | --- |
-| `client/` | React UI, API client, 장바구니 상태, 기능별 화면 |
-| `shared/` | client와 server가 공유하는 JSON API 계약 |
-| `server/db/` | SQLite 연결, 버전별 migration, seed 데이터 |
-| `server/catalog/` | 언어별 상품 조회와 정보 수정 |
-| `server/pricing/` | 정수 금액 계산과 쿠폰 규칙 |
-| `server/inventory/` | 재고 변경과 변동 이력 |
-| `server/orders/` | Checkout transaction, 불변 주문 항목, 주문 처리 |
-| `test/` | 격리된 domain, persistence, HTTP 계약 테스트 |
+| 경로                | 역할                                             |
+| ------------------- | ------------------------------------------------ |
+| `client/`           | React UI, API client, 장바구니 상태, 기능별 화면 |
+| `shared/`           | client와 server가 공유하는 JSON API 계약         |
+| `server/db/`        | SQLite 연결, 버전별 migration, seed 데이터       |
+| `server/catalog/`   | 언어별 상품 조회와 정보 수정                     |
+| `server/pricing/`   | 정수 금액 계산과 쿠폰 규칙                       |
+| `server/inventory/` | 재고 변경과 변동 이력                            |
+| `server/orders/`    | Checkout transaction, 불변 주문 항목, 주문 처리  |
+| `test/`             | 격리된 domain, persistence, HTTP 계약 테스트     |
 
 동작 변경 전 [제품 규칙](docs/product-rules.md), [아키텍처](docs/architecture.md),
 [HTTP API](docs/api.md)를 읽으세요. [태스크 안내](TASK.md)에서 선택한 과제의
@@ -99,5 +101,6 @@ Checkout은 하나의 transaction에서 현재 가격과 재고를 읽습니다.
 [실험 가이드](docs/pairing.md)에 따라 짧은 업무 요청과 동일한 초기 DB를 가진
 네 mode의 독립 workspace를 만들 수 있습니다. 상세 기준과 단계별 후속 질문은
 별도 평가자 폴더로 내보냅니다. 내보낸 폴더에서는 생성된 루트 `TASK.md`와 `RUN.md`를
-사용하며 전체 과제 모음은 포함하지 않습니다. 상세 계약 기반 실습은 [태스크 안내](TASK.md)를 따릅니다.
+사용하며 완료 기준과 전체 과제 모음은 포함하지 않습니다. 자료 분리는 자동 전달을
+피하기 위한 것이지 Agent의 파일 접근을 막는 장치가 아닙니다.
 개발 모드에서만 활성화할 수 있는 주문 응답 유실 재현 방법도 가이드에 있습니다.
